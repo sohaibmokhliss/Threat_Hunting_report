@@ -1,0 +1,89 @@
+\documentclass[12pt,a4paper]{report}
+
+% Inclure le préambule avec toute la configuration
+\input{preamble.tex}
+
+\begin{document}
+
+% ============================================
+% FRONTMATTER
+% ============================================
+
+% Page de couverture
+\input{frontmatter/cover.tex}
+\clearpage
+
+% Page blanche après la couverture
+\thispagestyle{empty}
+\mbox{}
+\clearpage
+
+% Numérotation romaine pour le frontmatter
+\pagenumbering{roman}
+
+% Dédicaces et remerciements
+\input{frontmatter/acknowledgements.tex}
+\clearpage
+
+% Résumé (FR/EN)
+\input{frontmatter/abstract.tex}
+\clearpage
+
+% Table des matières
+\tableofcontents
+\clearpage
+
+% Liste des figures
+\listoffigures
+\clearpage
+
+% Liste des tableaux
+\listoftables
+\clearpage
+
+% Liste des abréviations
+\input{frontmatter/acronyms.tex}
+\clearpage
+
+% ============================================
+% MAINMATTER - Chapitres
+% ============================================
+
+% Numérotation arabe pour le contenu principal
+\pagenumbering{arabic}
+
+% Introduction générale
+\input{chapters/introduction.tex}
+
+% Chapitre 1 : Contexte général
+\input{chapters/chapitre1_contexte.tex}
+
+% Chapitre 2 : Environnement technique
+\input{chapters/chapitre2_environnement.tex}
+
+% Chapitre 3 : Théorie Threat Hunting et ACH
+\input{chapters/chapitre3_threat_hunting.tex}
+
+% Chapitre 4 : Simulation de l'attaque
+\input{chapters/chapitre4_simulation_attaque.tex}
+
+% Chapitre 5 : Investigation ACH (CHAPITRE CENTRAL)
+\input{chapters/chapitre5_investigation_ach.tex}
+
+% Chapitre 6 : Résultats et recommandations
+\input{chapters/chapitre6_resultats_impact.tex}
+
+% Chapitre 7 : Perspectives futures
+\input{chapters/chapitre7_perspectives.tex}
+
+% Conclusion générale
+\input{chapters/conclusion.tex}
+
+% ============================================
+% BACKMATTER
+% ============================================
+
+% Bibliographie
+\printbibliography[title={Bibliographie}]
+
+\end{document}

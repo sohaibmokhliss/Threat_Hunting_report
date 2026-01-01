@@ -1,0 +1,209 @@
+\chapter{Threat Hunting en cybersécurité}
+
+\section{Introduction}
+
+Le Threat Hunting, ou chasse aux menaces, est une approche proactive de la cybersécurité qui consiste à rechercher activement des signes d'attaques, de comportements anormaux ou de compromissions potentielles avant même qu'une alerte ne soit déclenchée par les outils traditionnels.
+
+Contrairement aux systèmes automatisés comme les SIEM, IDS/IPS ou antivirus, qui attendent qu'un événement se produise pour le signaler, le Threat Hunting adopte une posture active et anticipative. L'objectif est d'identifier des menaces cachées, avancées ou silencieuses, souvent difficiles à détecter par des alertes classiques.
+
+\section{Fondements du Threat Hunting}
+
+\subsection{Principes fondamentaux}
+
+Le threat hunter s'appuie sur plusieurs éléments clés :
+\begin{itemize}
+\item \textbf{L'analyse comportementale} : Observation des patterns d'activité normaux et anormaux
+\item \textbf{L'intuition et l'expertise} : Expérience des analystes et connaissance des TTPs adverses
+\item \textbf{Des hypothèses basées sur les renseignements de menaces} : Utilisation de threat intelligence
+\item \textbf{La corrélation de données massives} : Exploitation des SIEM, logs système, réseau, EDR
+\item \textbf{Des techniques structurées} : ACH, MITRE ATT\&CK, Sigma, YARA
+\end{itemize}
+
+\subsection{Différence entre détection et hunting}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Aspect} & \textbf{Détection traditionnelle} & \textbf{Threat Hunting} \\ \midrule
+Approche & Réactive & Proactive \\
+Déclenchement & Alerte automatique & Hypothèse humaine \\
+Objectif & Répondre aux alertes & Trouver l'inconnu \\
+Méthode & Rules-based & Investigation guidée \\
+Cible & Menaces connues & Menaces cachées/APT \\ \bottomrule
+\end{tabular}
+\caption{Comparaison entre détection traditionnelle et Threat Hunting}
+\label{tab:detection-vs-hunting}
+\end{table}
+
+\subsection{Types de Threat Hunting}
+
+\begin{enumerate}
+\item \textbf{Hypothesis-driven hunting} : Basé sur des hypothèses formulées à partir de threat intelligence ou d'observations
+\item \textbf{IOC-driven hunting} : Recherche d'indicateurs de compromission spécifiques
+\item \textbf{TTP-driven hunting} : Recherche de tactiques, techniques et procédures adverses
+\item \textbf{Anomaly-driven hunting} : Détection d'écarts par rapport aux baselines établies
+\end{enumerate}
+
+\section{Analyse des hypothèses concurrentes (ACH)}
+
+\subsection{Définition}
+
+L'Analysis of Competing Hypotheses (ACH) est une technique analytique structurée qui permet de prendre des décisions solides grâce à un raisonnement logique et une évaluation critique. Elle consiste à comparer et à confronter plusieurs hypothèses afin de produire une explication la plus complète possible, basée sur les preuves disponibles.
+
+L'ACH est particulièrement adaptée au Threat Hunting car elle permet de :
+\begin{itemize}
+\item Éviter les biais de confirmation
+\item Évaluer objectivement plusieurs scénarios
+\item Documenter le raisonnement analytique
+\item Identifier l'hypothèse la plus probable
+\end{itemize}
+
+\subsection{Les 8 étapes de la méthode ACH}
+
+\subsubsection{Étape 1 : Identifier les hypothèses possibles}
+
+Formuler toutes les explications plausibles d'un événement ou d'un problème. Ne pas chercher une seule hypothèse, mais toutes les hypothèses réalistes.
+
+\textbf{Exemple dans notre contexte :}
+\begin{itemize}
+\item H1 : Activité administrative légitime
+\item H2 : Activité automatisée ou mauvaise configuration
+\item H3 : Accès non autorisé utilisant des identifiants valides
+\item H4 : Malware ou exploitation automatique
+\end{itemize}
+
+\subsubsection{Étape 2 : Lister toutes les preuves et informations disponibles}
+
+Rassembler les données, indicateurs, preuves, logs, renseignements ou témoignages. Inclure aussi les informations manquantes ou incertaines.
+
+\textbf{Exemple :}
+\begin{itemize}
+\item P1 : Logons depuis une source inhabituelle
+\item P2 : PowerShell encodé / obfusqué
+\item P3 : Activité ne correspondant pas aux procédures administratives
+\item P4 : Commandes de reconnaissance détectées
+\item etc.
+\end{itemize}
+
+\subsubsection{Étape 3 : Examiner la cohérence de chaque preuve avec chaque hypothèse}
+
+Créer un tableau (matrice ACH) où l'on compare chaque preuve avec chaque hypothèse. L'objectif est de savoir si la preuve confirme, réfute, ou n'a pas d'impact sur l'hypothèse.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Preuve} & \textbf{H1} & \textbf{H2} & \textbf{H3} & \textbf{H4} \\ \midrule
+P1 - Source inhabituelle & ❌ & ❌ & ✔️ & ➖ \\
+P2 - PowerShell encodé & ❌ & ❌ & ✔️ & ➖ \\
+P3 - Non conforme procédures & ❌ & ➖ & ✔️ & ➖ \\ \bottomrule
+\end{tabular}
+\caption{Exemple simplifié de matrice ACH}
+\label{tab:ach-example}
+\end{table}
+
+Légende : ✔️ = cohérent, ❌ = contredit l'hypothèse, ➖ = neutre
+
+\subsubsection{Étape 4 : Chercher les preuves qui réfutent plutôt que celles qui confirment}
+
+L'ACH donne plus d'importance aux éléments qui contredisent une hypothèse, car :
+\begin{itemize}
+\item Un élément contradictoire peut éliminer une hypothèse
+\item Un élément confirmant ne suffit pas pour dire qu'elle est vraie
+\end{itemize}
+
+C'est la logique du diagnostic différentiel utilisée en médecine.
+
+\subsubsection{Étape 5 : Éliminer les hypothèses incompatibles avec les preuves}
+
+Écarter d'abord les hypothèses qui présentent le plus d'incohérences. Conserver celles qui résistent le mieux à la confrontation des preuves.
+
+\subsubsection{Étape 6 : Déterminer la probabilité relative de chaque hypothèse restante}
+
+Les hypothèses non éliminées sont classées selon :
+\begin{itemize}
+\item Leur cohérence avec les preuves
+\item La solidité des preuves
+\item Les incertitudes restantes
+\end{itemize}
+
+On n'obtient jamais une certitude à 100\%, mais une probabilité relative.
+
+\subsubsection{Étape 7 : Documenter les conclusions et les justifier}
+
+Formuler un rapport clair indiquant :
+\begin{itemize}
+\item L'hypothèse la plus probable
+\item Celles rejetées et pourquoi
+\item Les preuves clés
+\item Les limites et incertitudes
+\end{itemize}
+
+\subsubsection{Étape 8 : Identifier les indicateurs pour un suivi futur}
+
+Définir quels nouveaux éléments permettraient de confirmer ou infirmer l'hypothèse retenue. Mettre en place une surveillance continue.
+
+\section{Intégration ACH et MITRE ATT\&CK}
+
+L'utilisation conjointe de la méthode ACH et du framework MITRE ATT\&CK renforce considérablement l'efficacité du Threat Hunting :
+
+\begin{itemize}
+\item \textbf{MITRE ATT\&CK} fournit les TTPs à rechercher (quoi chercher)
+\item \textbf{ACH} structure le raisonnement analytique (comment analyser)
+\end{itemize}
+
+Cette combinaison permet de :
+\begin{enumerate}
+\item Formuler des hypothèses basées sur des techniques ATT\&CK connues
+\item Rechercher des preuves dans les logs correspondant à ces techniques
+\item Évaluer objectivement quelle explication est la plus probable
+\item Documenter la chaîne de raisonnement pour des investigations futures
+\end{enumerate}
+
+\section{Avantages de la méthode ACH}
+
+\subsection{Rigueur analytique}
+
+L'ACH force l'analyste à considérer plusieurs explications possibles et à les confronter systématiquement aux preuves, réduisant ainsi les biais cognitifs.
+
+\subsection{Traçabilité}
+
+La matrice ACH documente le processus de raisonnement, permettant de :
+\begin{itemize}
+\item Justifier les conclusions auprès de la direction
+\item Permettre la revue par les pairs
+\item Faciliter les audits et les investigations ultérieures
+\end{itemize}
+
+\subsection{Communication efficace}
+
+Le format tabulaire de l'ACH facilite la communication des résultats aux parties prenantes non techniques.
+
+\section{Limites et considérations}
+
+\subsection{Limitations}
+
+\begin{itemize}
+\item \textbf{Qualité des données} : L'ACH n'est efficace que si les logs collectés sont complets et fiables
+\item \textbf{Expertise requise} : Formuler des hypothèses pertinentes nécessite une bonne connaissance des TTPs
+\item \textbf{Temps et ressources} : La méthode peut être chronophage pour des investigations complexes
+\end{itemize}
+
+\subsection{Bonnes pratiques}
+
+\begin{itemize}
+\item Commencer avec 3-5 hypothèses maximum
+\item Impliquer plusieurs analystes pour éviter les angles morts
+\item Réviser régulièrement les hypothèses au fil de nouvelles preuves
+\item Documenter les hypothèses écartées et pourquoi
+\end{itemize}
+
+\section{Conclusion}
+
+Le Threat Hunting transforme la cybersécurité de réactive à proactive. L'utilisation de la méthode ACH apporte une structure rigoureuse au processus d'investigation, permettant d'évaluer objectivement plusieurs scénarios et d'identifier l'explication la plus probable.
+
+Dans le contexte de notre projet, l'ACH sera appliquée pour analyser l'activité suspecte détectée sur le Windows Server, en formulant plusieurs hypothèses (activité légitime, erreur de configuration, attaque réelle, malware) et en les confrontant systématiquement aux preuves collectées dans les logs.
+
+Le chapitre suivant présentera la simulation complète de l'attaque, détaillant chaque étape technique et les traces laissées dans les différentes sources de logs.

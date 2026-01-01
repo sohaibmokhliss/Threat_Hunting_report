@@ -1,0 +1,144 @@
+\chapter*{Conclusion générale}
+\addcontentsline{toc}{chapter}{Conclusion générale}
+
+Le projet présenté dans ce rapport s'inscrit dans le contexte actuel des enjeux majeurs de la cybersécurité, où les attaques deviennent de plus en plus sophistiquées et furtives. Face à ces menaces évoluées, les approches traditionnelles de détection basées uniquement sur des signatures et des règles fixes montrent leurs limites. Il est devenu indispensable d'adopter une posture proactive à travers le Threat Hunting, permettant de rechercher activement les signes de compromission avant même qu'une alerte automatique ne soit déclenchée.
+
+\section*{Rappel des objectifs}
+
+L'objectif principal de ce projet était double : d'une part, simuler une chaîne d'attaque complète sur un environnement Windows en utilisant des techniques « Living off the Land », et d'autre part, démontrer l'efficacité d'une méthodologie structurée d'investigation basée sur l'Analysis of Competing Hypotheses (ACH) pour analyser et reconstituer cette attaque exclusivement à partir des logs collectés par un SIEM.
+
+\section*{Réalisations accomplies}
+
+\subsection*{Simulation d'attaque réaliste}
+
+Nous avons réussi à reproduire une attaque sophistiquée couvrant l'ensemble de la chaîne d'attaque (Cyber Kill Chain) :
+
+\begin{enumerate}
+\item \textbf{Initial Access} via AS-REP Roasting, exploitant une faiblesse de configuration Kerberos
+\item \textbf{Credential Access} par craquage hors-ligne de hash
+\item \textbf{Execution} avec des commandes PowerShell encodées pour l'évasion
+\item \textbf{Discovery} par reconnaissance du système et énumération de fichiers sensibles
+\item \textbf{Persistence} via la création d'une tâche planifiée malveillante
+\item \textbf{Exfiltration} de données en utilisant BITS, un outil légitime de Windows
+\end{enumerate}
+
+Cette simulation a démontré qu'un attaquant peut mener une compromission complète en utilisant uniquement des outils natifs du système, sans déployer de malware détectable par les solutions antivirus traditionnelles.
+
+\subsection*{Investigation structurée avec ACH}
+
+L'application rigoureuse de la méthode ACH a permis de :
+
+\begin{itemize}
+\item Formuler quatre hypothèses plausibles expliquant l'activité suspecte
+\item Collecter et documenter quinze preuves différentes extraites des logs
+\item Confronter systématiquement chaque preuve à chaque hypothèse dans une matrice
+\item Éliminer objectivement les hypothèses non cohérentes
+\item Identifier avec un haut niveau de confiance (95\%) l'hypothèse la plus probable
+\item Conclure formellement à une compromission réelle du système
+\end{itemize}
+
+La méthode ACH s'est révélée particulièrement efficace pour éviter les biais de confirmation et pour documenter de manière traçable le processus de raisonnement analytique, facilitant ainsi la communication avec les parties prenantes et la justification des conclusions.
+
+\subsection*{Mapping MITRE ATT\&CK}
+
+Chaque étape de l'attaque a été mappée aux tactiques et techniques du framework MITRE ATT\&CK, permettant de :
+
+\begin{itemize}
+\item Standardiser la documentation de l'attaque
+\item Évaluer la couverture de détection actuelle
+\item Identifier les gaps dans les règles SIEM
+\item Comparer avec des campagnes APT documentées
+\end{itemize}
+
+Cette cartographie a révélé que si les événements étaient présents dans les logs, plusieurs techniques n'étaient pas couvertes par des alertes automatiques, soulignant l'importance du Threat Hunting proactif.
+
+\subsection*{Recommandations opérationnelles}
+
+Le projet a abouti à des recommandations concrètes et immédiatement applicables :
+
+\begin{itemize}
+\item Correction de la vulnérabilité AS-REP Roasting
+\item Déploiement de cinq nouveaux cas d'usage SIEM
+\item Mise en place d'authentification multifacteur pour RDP
+\item Durcissement des configurations PowerShell
+\item Structuration d'un programme de Threat Hunting
+\item Développement de playbooks de réponse à incident
+\end{itemize}
+
+\section*{Apports du projet}
+
+\subsection*{Apports techniques}
+
+\begin{itemize}
+\item \textbf{Compréhension approfondie} des techniques d'attaque modernes et de leurs traces dans les logs
+\item \textbf{Maîtrise} de la configuration et de l'utilisation d'un SIEM (Elastic Security)
+\item \textbf{Expertise} en analyse de logs Windows (Security Events, Sysmon, PowerShell)
+\item \textbf{Compétence} en requêtage et corrélation d'événements pour la détection d'attaques
+\end{itemize}
+
+\subsection*{Apports méthodologiques}
+
+\begin{itemize}
+\item \textbf{Application pratique} de la méthode ACH dans un contexte opérationnel SOC
+\item \textbf{Développement} d'une approche structurée de Threat Hunting
+\item \textbf{Expérience} en simulation d'attaque et analyse post-mortem
+\item \textbf{Utilisation} du framework MITRE ATT\&CK pour structurer l'analyse
+\end{itemize}
+
+\subsection*{Apports pour l'organisation}
+
+Pour DataProtect, ce projet apporte :
+
+\begin{itemize}
+\item Une \textbf{méthodologie reproductible} pour les investigations futures
+\item Des \textbf{cas d'usage SIEM} prêts à déployer
+\item Un \textbf{retour d'expérience} documenté sur une attaque réaliste
+\item Des \textbf{recommandations} pour améliorer les capacités de détection du SOC
+\item Une \textbf{base} pour structurer un programme de Threat Hunting
+\end{itemize}
+
+\section*{Limites et défis rencontrés}
+
+Ce projet a également mis en évidence certaines limites et défis :
+
+\begin{itemize}
+\item \textbf{Volumétrie des logs} : La quantité importante d'événements collectés rend la corrélation manuelle chronophage
+\item \textbf{Faux positifs} : Certaines activités légitimes peuvent ressembler à des comportements malveillants
+\item \textbf{Environnement contrôlé} : La simulation dans un environnement de laboratoire ne reproduit pas totalement la complexité d'un réseau d'entreprise réel
+\item \textbf{Expertise requise} : L'application efficace de l'ACH nécessite une bonne connaissance des TTPs adverses
+\item \textbf{Évolution constante} : Les techniques d'attaque évoluent rapidement, nécessitant une veille continue
+\end{itemize}
+
+\section*{Perspectives d'avenir}
+
+Ce projet ouvre de nombreuses perspectives d'amélioration et d'extension :
+
+\begin{itemize}
+\item \textbf{Automatisation} via une plateforme SOAR pour accélérer la réponse
+\item \textbf{Intelligence artificielle} pour détecter les anomalies comportementales
+\item \textbf{Extension} à d'autres environnements (Linux, Cloud, OT)
+\item \textbf{Programme Purple Team} pour une amélioration continue
+\item \textbf{Enrichissement} avec des sources de données supplémentaires (EDR, NetFlow)
+\end{itemize}
+
+\section*{Réflexion finale}
+
+Ce projet a démontré qu'une approche structurée du Threat Hunting, combinant simulation d'attaque, collecte de logs, et analyse méthodique avec ACH, permet de détecter et de comprendre des attaques sophistiquées qui échapperaient aux systèmes de détection automatique.
+
+Plus qu'un simple exercice technique, ce travail illustre l'importance d'une démarche analytique rigoureuse dans la cybersécurité moderne. Face à des attaquants qui utilisent de plus en plus des techniques d'évasion et des outils légitimes (Living off the Land), la capacité à formuler des hypothèses, à collecter méthodiquement des preuves, et à raisonner de manière structurée devient essentielle.
+
+La méthode ACH, bien que développée initialement pour l'analyse de renseignement, s'est révélée parfaitement adaptée au contexte de la cybersécurité. Elle apporte la rigueur nécessaire pour éviter les conclusions hâtives, documenter le raisonnement, et communiquer efficacement avec les parties prenantes.
+
+\section*{Mot de conclusion}
+
+Ce stage au sein de DataProtect nous a permis de mettre en pratique des concepts théoriques dans un environnement professionnel exigeant. L'accompagnement de l'équipe SOC et les moyens techniques mis à disposition ont été déterminants pour la réussite de ce projet.
+
+Au-delà des compétences techniques acquises, ce projet nous a appris l'importance de la méthodologie, de la documentation, et de la communication dans le domaine de la cybersécurité. Ces apprentissages seront précieux pour notre carrière future dans ce domaine en constante évolution.
+
+Nous espérons que ce travail contribuera à améliorer les capacités de détection de DataProtect et servira de base pour de futures investigations et améliorations. La cybersécurité est un domaine où l'apprentissage continu et l'adaptation sont essentiels, et ce projet n'est qu'une étape dans un parcours de perfectionnement constant.
+
+\vspace{1cm}
+
+\begin{flushright}
+\textit{« La meilleure défense est une chasse proactive aux menaces. »}
+\end{flushright}

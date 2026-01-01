@@ -1,0 +1,341 @@
+\chapter{Résultats et recommandations}
+
+\section{Introduction}
+
+Ce chapitre présente les résultats de l'investigation menée, l'impact de l'incident détecté, et propose des recommandations pour améliorer la posture de sécurité et les capacités de détection du SOC.
+
+\section{Synthèse des résultats}
+
+\subsection{Incident confirmé}
+
+L'investigation a confirmé une compromission réelle du serveur Windows par un acteur externe utilisant des techniques sophistiquées. L'attaque a suivi une chaîne d'attaque complète :
+
+\begin{enumerate}
+\item \textbf{Credential Access :} AS-REP Roasting pour compromettre un compte utilisateur
+\item \textbf{Initial Access :} Authentification RDP avec credentials valides
+\item \textbf{Execution :} Commandes PowerShell encodées pour éviter la détection
+\item \textbf{Discovery :} Reconnaissance du système et énumération des fichiers sensibles
+\item \textbf{Persistence :} Création d'une tâche planifiée malveillante
+\item \textbf{Exfiltration :} Transfert de données via BITS
+\end{enumerate}
+
+\subsection{Efficacité de la méthode ACH}
+
+La méthode ACH s'est révélée particulièrement efficace pour :
+\begin{itemize}
+\item Structurer l'investigation de manière rigoureuse
+\item Éviter les biais de confirmation en considérant plusieurs hypothèses
+\item Documenter le raisonnement analytique de manière traçable
+\item Fournir une conclusion avec un niveau de confiance quantifiable
+\end{itemize}
+
+\subsection{Couverture de détection}
+
+L'analyse a permis d'évaluer la couverture de détection actuelle :
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}llcc@{}}
+\toprule
+\textbf{Phase} & \textbf{Technique} & \textbf{Détectable} & \textbf{Alerté} \\ \midrule
+Credential Access & AS-REP Roasting & ✔️ & ❌ \\
+Initial Access & RDP Logon & ✔️ & ✔️ \\
+Execution & PowerShell Encoded & ✔️ & ⚠️ \\
+Discovery & File Enumeration & ✔️ & ❌ \\
+Persistence & Scheduled Task & ✔️ & ❌ \\
+Exfiltration & BITS Transfer & ✔️ & ❌ \\ \bottomrule
+\end{tabular}
+\caption{Évaluation de la couverture de détection}
+\label{tab:detection-coverage}
+\end{table}
+
+\textit{Légende : ✔️ = Détectable dans les logs, ⚠️ = Partiellement alerté, ❌ = Non alerté}
+
+\section{Évaluation de l'impact}
+
+\subsection{Impact technique}
+
+\begin{description}
+\item[Confidentialité] \textbf{ÉLEVÉE} - Des fichiers sensibles (backups, potentiellement des credentials) ont été exfiltrés
+\item[Intégrité] \textbf{MOYENNE} - Le système a été modifié (tâche planifiée, scripts)
+\item[Disponibilité] \textbf{FAIBLE} - Aucune dégradation de service détectée
+\end{description}
+
+\subsection{Impact métier}
+
+\begin{itemize}
+\item \textbf{Exposition de données sensibles} : Risque de fuite d'informations confidentielles
+\item \textbf{Perte de confiance} : Impact sur la réputation si l'incident est public
+\item \textbf{Coûts de remédiation} : Temps et ressources nécessaires pour l'éradication
+\item \textbf{Conformité réglementaire} : Obligation de notification selon RGPD si données personnelles affectées
+\end{itemize}
+
+\subsection{Dommages potentiels évités}
+
+Grâce à la détection et à l'investigation, plusieurs scénarios aggravants ont été évités :
+\begin{itemize}
+\item Mouvement latéral vers d'autres systèmes
+\item Élévation de privilèges vers Domain Admin
+\item Déploiement de ransomware
+\item Exfiltration massive de données
+\end{itemize}
+
+\section{Recommandations stratégiques}
+
+\subsection{Amélioration de la posture de sécurité}
+
+\subsubsection{Protection contre l'AS-REP Roasting}
+
+\textbf{Action immédiate :}
+\begin{lstlisting}[language=powershell, caption={Script pour identifier les comptes vulnérables}]
+# Identifier tous les comptes sans pré-authentification
+Get-ADUser -Filter {DoesNotRequirePreAuth -eq $true} | 
+Select-Object Name, SamAccountName, DoesNotRequirePreAuth
+\end{lstlisting}
+
+\textbf{Recommandations :}
+\begin{itemize}
+\item Activer la pré-authentification Kerberos pour tous les comptes
+\item Si un compte doit garder cette configuration, renforcer le mot de passe (25+ caractères aléatoires)
+\item Auditer régulièrement les configurations AD
+\end{itemize}
+
+\subsubsection{Durcissement Active Directory}
+
+\begin{enumerate}
+\item \textbf{Politique de mots de passe renforcée}
+   \begin{itemize}
+   \item Longueur minimale : 14 caractères
+   \item Complexité obligatoire
+   \item Expiration : 90 jours maximum
+   \item Historique : 24 mots de passe
+   \end{itemize}
+
+\item \textbf{Authentification multifacteur (MFA)}
+   \begin{itemize}
+   \item Déployer MFA pour tous les accès RDP
+   \item Privilégier l'authentification par certificat
+   \item Utiliser des solutions comme Azure MFA ou RADIUS
+   \end{itemize}
+
+\item \textbf{Principe du moindre privilège}
+   \begin{itemize}
+   \item Limiter les comptes avec privilèges Domain Admin
+   \item Utiliser des comptes dédiés pour l'administration
+   \item Implémenter des PAW (Privileged Access Workstations)
+   \end{itemize}
+\end{enumerate}
+
+\subsubsection{Sécurisation PowerShell}
+
+\begin{enumerate}
+\item \textbf{Activer Constrained Language Mode}
+\begin{lstlisting}[language=powershell, caption={Configuration du Constrained Language Mode}]
+# Via GPO : Set Environment Variable
+$env:__PSLockdownPolicy = 4
+\end{lstlisting}
+
+\item \textbf{Application Whitelisting}
+   \begin{itemize}
+   \item Déployer AppLocker ou Windows Defender Application Control
+   \item Restreindre l'exécution de PowerShell aux administrateurs
+   \end{itemize}
+
+\item \textbf{Enhanced Logging}
+   \begin{itemize}
+   \item Module Logging activé
+   \item Script Block Logging activé
+   \item Transcription PowerShell activée
+   \end{itemize}
+\end{enumerate}
+
+\subsection{Amélioration des capacités de détection}
+
+\subsubsection{Nouveaux cas d'usage SIEM}
+
+\textbf{Use Case 1 : Détection AS-REP Roasting}
+
+\begin{lstlisting}[language=SQL, caption={Règle de détection AS-REP Roasting}]
+rule_name: "AS-REP Roasting Activity Detected"
+query: |
+  event.code: 4768 AND 
+  winlog.event_data.PreAuthType: 0
+severity: HIGH
+description: "Kerberos ticket requested without pre-authentication"
+recommendation: "Investigate account and enable pre-authentication"
+\end{lstlisting}
+
+\textbf{Use Case 2 : PowerShell encodé suspect}
+
+\begin{lstlisting}[language=SQL, caption={Règle de détection PowerShell encodé}]
+rule_name: "Suspicious Encoded PowerShell Execution"
+query: |
+  event.code: 4104 AND 
+  (message: "*-Enc*" OR message: "*-EncodedCommand*") AND
+  (message: "*Get-ChildItem*" OR message: "*Invoke-*")
+severity: MEDIUM
+description: "Encoded PowerShell with suspicious cmdlets"
+\end{lstlisting}
+
+\textbf{Use Case 3 : Tâche planifiée malveillante}
+
+\begin{lstlisting}[language=SQL, caption={Règle de détection tâches suspectes}]
+rule_name: "Suspicious Scheduled Task Creation"
+query: |
+  event.code: 4698 AND 
+  (process.command_line: "*powershell*" OR 
+   process.command_line: "*-Enc*" OR
+   process.command_line: "*bitsadmin*")
+severity: HIGH
+description: "Scheduled task created with suspicious command"
+\end{lstlisting}
+
+\textbf{Use Case 4 : Exfiltration via BITS}
+
+\begin{lstlisting}[language=SQL, caption={Règle de détection exfiltration BITS}]
+rule_name: "Data Exfiltration via BITS"
+query: |
+  process.name: "bitsadmin.exe" AND 
+  (process.command_line: "*upload*" OR 
+   process.command_line: "*addfile*") AND
+  NOT destination.ip: (192.168.0.0/16 OR 10.0.0.0/8)
+severity: CRITICAL
+description: "BITS used for potential data exfiltration"
+\end{lstlisting}
+
+\textbf{Use Case 5 : Authentification anormale}
+
+\begin{lstlisting}[language=SQL, caption={Règle de détection logon anormal}]
+rule_name: "Abnormal Interactive Logon to DC"
+query: |
+  event.code: 4624 AND 
+  winlog.event_data.LogonType: 10 AND
+  host.hostname: "DC-*" AND
+  hour_of_day: (0-7 OR 20-23)
+severity: MEDIUM
+description: "Interactive logon to DC outside business hours"
+\end{lstlisting}
+
+\subsubsection{Corrélation avancée}
+
+Implémenter des règles de corrélation pour détecter la chaîne d'attaque complète :
+
+\begin{lstlisting}[caption={Règle de corrélation - Chaîne d'attaque}]
+rule_name: "Suspicious Activity Chain Detected"
+correlation: |
+  SEQUENCE by user.name
+    [Event 4768 with PreAuthType=0]
+    [Event 4624 with LogonType=10] within 30m
+    [Event 4104 with encoded PowerShell] within 10m
+    [Event 4698 scheduled task creation] within 20m
+severity: CRITICAL
+description: "Full attack chain detected - immediate investigation required"
+\end{lstlisting}
+
+\subsection{Amélioration des processus SOC}
+
+\subsubsection{Threat Hunting proactif}
+
+\begin{enumerate}
+\item \textbf{Hunting régulier}
+   \begin{itemize}
+   \item Sessions de hunting hebdomadaires dédiées
+   \item Rotation des analysts sur différentes hypothèses
+   \item Documentation des techniques recherchées
+   \end{itemize}
+
+\item \textbf{Utilisation systématique de l'ACH}
+   \begin{itemize}
+   \item Former tous les analystes à la méthode ACH
+   \item Template standardisé pour les investigations
+   \item Revue par les pairs des analyses ACH
+   \end{itemize}
+
+\item \textbf{Threat Intelligence}
+   \begin{itemize}
+   \item Abonnement à des flux de threat intelligence
+   \item Intégration avec MITRE ATT\&CK
+   \item Veille sur les nouvelles TTPs
+   \end{itemize}
+\end{enumerate}
+
+\subsubsection{Formation et sensibilisation}
+
+\begin{itemize}
+\item \textbf{Formation technique :} PowerShell avancé, Kerberos, Active Directory
+\item \textbf{Formation méthodologique :} ACH, Threat Hunting, incident response
+\item \textbf{Exercices pratiques :} Simulations d'attaque régulières (Purple Team)
+\item \textbf{Sensibilisation :} Sessions de sensibilisation pour les utilisateurs finaux
+\end{itemize}
+
+\section{Métriques de performance}
+
+\subsection{KPIs proposés}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Métrique} & \textbf{Objectif} & \textbf{Fréquence} \\ \midrule
+Mean Time to Detect (MTTD) & < 2 heures & Mensuel \\
+Mean Time to Respond (MTTR) & < 4 heures & Mensuel \\
+False Positive Rate & < 10\% & Hebdomadaire \\
+Alert Coverage & > 90\% techniques ATT\&CK & Trimestriel \\
+Hunting Sessions & > 4 par mois & Mensuel \\
+Incidents détectés proactivement & > 30\% & Trimestriel \\ \bottomrule
+\end{tabular}
+\caption{KPIs proposés pour le SOC}
+\label{tab:kpis}
+\end{table}
+
+\subsection{Tableau de bord de suivi}
+
+Mise en place d'un tableau de bord Kibana pour suivre :
+\begin{itemize}
+\item Volume d'événements collectés par source
+\item Alertes générées par sévérité
+\item Temps de réponse aux incidents
+\item Couverture MITRE ATT\&CK
+\item Résultats des sessions de hunting
+\end{itemize}
+
+\section{Plan d'amélioration continue}
+
+\subsection{Court terme (1-3 mois)}
+
+\begin{enumerate}
+\item Corriger la vulnérabilité AS-REP Roasting
+\item Déployer les 5 nouveaux cas d'usage SIEM
+\item Former les analystes à la méthode ACH
+\item Activer MFA pour RDP
+\end{enumerate}
+
+\subsection{Moyen terme (3-6 mois)}
+
+\begin{enumerate}
+\item Implémenter AppLocker / WDAC
+\item Déployer un programme de Threat Hunting structuré
+\item Intégrer des flux de Threat Intelligence
+\item Automatiser certaines réponses (SOAR)
+\end{enumerate}
+
+\subsection{Long terme (6-12 mois)}
+
+\begin{enumerate}
+\item Déployer une solution EDR
+\item Implémenter un programme Purple Team
+\item Obtenir la certification SOC pour l'équipe
+\item Développer des playbooks automatisés avancés
+\end{enumerate}
+
+\section{Conclusion}
+
+Ce chapitre a présenté les résultats de l'investigation et proposé des recommandations concrètes pour améliorer la détection et la prévention des attaques similaires. Les recommandations couvrent trois axes principaux :
+
+\begin{enumerate}
+\item \textbf{Durcissement de la sécurité :} Corrections des vulnérabilités identifiées
+\item \textbf{Amélioration de la détection :} Nouveaux cas d'usage SIEM et corrélation avancée
+\item \textbf{Optimisation des processus :} Threat Hunting proactif et méthode ACH
+\end{enumerate}
+
+La mise en œuvre de ces recommandations permettra de renforcer significativement la posture de sécurité et les capacités opérationnelles du SOC face aux menaces avancées.
