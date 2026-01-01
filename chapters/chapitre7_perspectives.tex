@@ -1,0 +1,355 @@
+\chapter{Perspectives futures}
+
+\section{Introduction}
+
+À l'issue de ce projet, plusieurs perspectives d'évolution se dégagent afin de renforcer la qualité du Threat Hunting et d'améliorer la posture globale de détection au sein d'un SOC. Ce chapitre explore les différentes pistes d'amélioration et d'extension du travail réalisé.
+
+\section{Élargissement du périmètre des attaques}
+
+\subsection{Techniques additionnelles à explorer}
+
+Si ce travail s'est concentré sur un scénario complet allant de l'AS-REP Roasting à l'exfiltration de données, d'autres techniques pourraient être explorées dans le cadre de futures simulations :
+
+\subsubsection{Mouvement latéral}
+
+\begin{itemize}
+\item \textbf{Pass-the-Hash (PTH)} : Réutilisation de hash NTLM pour l'authentification
+\item \textbf{Pass-the-Ticket (PTT)} : Réutilisation de tickets Kerberos
+\item \textbf{DCOM/WMI} : Exécution à distance via DCOM ou WMI
+\item \textbf{PSExec} : Déploiement de services à distance
+\end{itemize}
+
+\textbf{Intérêt :} Comprendre comment un attaquant se déplace dans le réseau après la compromission initiale et améliorer la détection de ces mouvements.
+
+\subsubsection{Élévation de privilèges}
+
+\begin{itemize}
+\item \textbf{Kerberoasting} : Attaque complémentaire à l'AS-REP Roasting
+\item \textbf{Token Impersonation} : Usurpation de tokens de processus privilégiés
+\item \textbf{Exploits de vulnérabilités} : PrintNightmare, Zerologon, etc.
+\item \textbf{Abus de GPO} : Modifications de stratégies de groupe
+\end{itemize}
+
+\textbf{Intérêt :} Détecter les tentatives d'obtention de privilèges Domain Admin.
+
+\subsubsection{Persistance avancée}
+
+\begin{itemize}
+\item \textbf{Golden Ticket} : Création de tickets Kerberos forgés
+\item \textbf{Silver Ticket} : Tickets de service forgés
+\item \textbf{Skeleton Key} : Backdoor sur le contrôleur de domaine
+\item \textbf{DLL Hijacking} : Détournement de chargement de DLL
+\item \textbf{Registry Run Keys} : Persistance via le registre Windows
+\end{itemize}
+
+\textbf{Intérêt :} Identifier les mécanismes de persistance difficiles à détecter et à éradiquer.
+
+\subsubsection{Techniques d'évasion avancées}
+
+\begin{itemize}
+\item \textbf{Process Injection} : Injection de code dans des processus légitimes
+\item \textbf{Process Hollowing} : Remplacement du code d'un processus légitime
+\item \textbf{Reflective DLL Injection} : Chargement de DLL en mémoire sans toucher le disque
+\item \textbf{AMSI Bypass} : Contournement de l'Antimalware Scan Interface
+\end{itemize}
+
+\textbf{Intérêt :} Tester la capacité de détection face à des techniques d'évasion sophistiquées.
+
+\subsection{Scénarios d'attaque multi-étapes}
+
+Développer des scénarios d'attaque plus complexes combinant plusieurs techniques :
+
+\begin{enumerate}
+\item \textbf{APT Simulation complète} : Du phishing initial au déploiement de ransomware
+\item \textbf{Supply Chain Attack} : Compromission via un fournisseur tiers
+\item \textbf{Insider Threat} : Simulation de menace interne malveillante
+\item \textbf{Cloud Compromise} : Attaques ciblant les environnements hybrides (on-premise + cloud)
+\end{enumerate}
+
+\section{Automatisation et orchestration}
+
+\subsection{Intégration d'une plateforme SOAR}
+
+L'intégration d'un outil SOAR (Security Orchestration, Automation and Response) constitue une évolution naturelle pour automatiser la réponse aux incidents.
+
+\subsubsection{Cas d'usage d'automatisation}
+
+\begin{enumerate}
+\item \textbf{Enrichissement automatique des alertes}
+   \begin{itemize}
+   \item Requête automatique vers Threat Intelligence platforms
+   \item Enrichissement avec WHOIS, geolocation, reputation
+   \item Récupération du contexte historique de l'entité
+   \end{itemize}
+
+\item \textbf{Réponse automatisée}
+   \begin{itemize}
+   \item Blocage automatique d'IP malveillantes au firewall
+   \item Isolation automatique de machines compromises
+   \item Désactivation automatique de comptes compromis
+   \item Révocation de tickets Kerberos
+   \end{itemize}
+
+\item \textbf{Investigation assistée}
+   \begin{itemize}
+   \item Collecte automatique des logs pertinents
+   \item Exécution de requêtes de chasse prédéfinies
+   \item Génération automatique de timeline
+   \item Création de tickets avec contexte complet
+   \end{itemize}
+\end{enumerate}
+
+\subsubsection{Bénéfices attendus}
+
+\begin{itemize}
+\item \textbf{Réduction du MTTR} : De plusieurs heures à quelques minutes pour les actions standards
+\item \textbf{Cohérence} : Actions standardisées et reproductibles
+\item \textbf{Scalabilité} : Capacité à gérer un volume d'alertes plus important
+\item \textbf{Libération des analystes} : Plus de temps pour les investigations complexes
+\end{itemize}
+
+\subsection{Playbooks automatisés}
+
+Développement de playbooks pour différents types d'incidents :
+
+\begin{itemize}
+\item Playbook « AS-REP Roasting détecté »
+\item Playbook « PowerShell suspect »
+\item Playbook « Exfiltration de données »
+\item Playbook « Compromission de compte »
+\end{itemize}
+
+\section{Intelligence artificielle et machine learning}
+
+\subsection{Détection comportementale avancée}
+
+\subsubsection{User and Entity Behavior Analytics (UEBA)}
+
+Déploiement de solutions UEBA pour détecter les anomalies comportementales :
+
+\begin{itemize}
+\item \textbf{Baseline comportementale} : Apprentissage du comportement normal de chaque utilisateur et entité
+\item \textbf{Détection d'anomalies} : Identification automatique des écarts significatifs
+\item \textbf{Risk scoring} : Attribution d'un score de risque dynamique
+\item \textbf{Peer group analysis} : Comparaison avec des groupes de pairs similaires
+\end{itemize}
+
+\textbf{Exemples d'anomalies détectables :}
+\begin{itemize}
+\item Accès à des ressources inhabituelles pour l'utilisateur
+\item Volume de données transférées anormal
+\item Horaires de connexion atypiques
+\item Utilisation d'outils rarement employés par cet utilisateur
+\end{itemize}
+
+\subsubsection{Network Traffic Analysis (NTA)}
+
+Analyse du trafic réseau avec des techniques de ML :
+
+\begin{itemize}
+\item Détection de communications de Command \& Control (C2)
+\item Identification de tunneling DNS
+\item Détection d'exfiltration lente (slow exfiltration)
+\item Reconnaissance de patterns de scan et de reconnaissance
+\end{itemize}
+
+\subsection{Amélioration des alertes par ML}
+
+\subsubsection{Réduction des faux positifs}
+
+Utilisation de modèles de ML pour :
+\begin{itemize}
+\item Classifier automatiquement les alertes (vrai positif vs faux positif)
+\item Ajuster les seuils de détection dynamiquement
+\item Corréler intelligemment les alertes liées
+\item Prioriser les alertes selon le risque réel
+\end{itemize}
+
+\subsubsection{Modèles envisageables}
+
+\begin{enumerate}
+\item \textbf{Classification supervisée} : Apprentissage sur les alertes historiques étiquetées
+\item \textbf{Clustering} : Regroupement d'alertes similaires pour identifier des patterns
+\item \textbf{Anomaly detection} : Détection d'événements statistiquement anormaux
+\item \textbf{Time series analysis} : Analyse de séries temporelles pour détecter des tendances
+\end{enumerate}
+
+\section{Extension des sources de données}
+
+\subsection{Enrichissement de la collecte}
+
+\subsubsection{Sources additionnelles}
+
+\begin{itemize}
+\item \textbf{Logs de pare-feu} : Trafic réseau entrant/sortant, connexions bloquées
+\item \textbf{Logs de proxy web} : Navigation web, téléchargements, communications externes
+\item \textbf{NetFlow / IPFIX} : Métadonnées de flux réseau pour analyse du trafic
+\item \textbf{Logs EDR} : Télémétrie endpoint enrichie (memory forensics, behavior analysis)
+\item \textbf{Cloud logs} : Azure AD, AWS CloudTrail, Google Cloud Audit Logs
+\item \textbf{Email gateway logs} : Détection de phishing, pièces jointes suspectes
+\item \textbf{DLP logs} : Tentatives de fuite de données
+\end{itemize}
+
+\subsubsection{Bénéfices}
+
+\begin{itemize}
+\item \textbf{Visibilité accrue} : Couverture de l'ensemble de la surface d'attaque
+\item \textbf{Corrélation améliorée} : Connexions entre événements de sources différentes
+\item \textbf{Contexte enrichi} : Meilleure compréhension de la chaîne d'attaque
+\item \textbf{Détection précoce} : Identification d'indicateurs précoces d'attaque
+\end{itemize}
+
+\subsection{Intégration Threat Intelligence}
+
+\subsubsection{Flux TI à intégrer}
+
+\begin{itemize}
+\item \textbf{Commercial feeds} : AlienVault OTX, Recorded Future, CrowdStrike
+\item \textbf{Open source} : MISP, Abuse.ch, PhishTank
+\item \textbf{ISACs} : Information Sharing and Analysis Centers sectoriels
+\item \textbf{Gouvernemental} : CERT national, advisories
+\end{itemize}
+
+\subsubsection{Utilisation de la TI}
+
+\begin{enumerate}
+\item \textbf{Enrichissement proactif} : Recherche d'IOCs dans les logs historiques
+\item \textbf{Hunting guidé} : Hypothèses basées sur les campagnes actives
+\item \textbf{Contextualisation} : Attribution d'alertes à des groupes APT connus
+\item \textbf{Anticipation} : Préparation aux techniques émergentes
+\end{enumerate}
+
+\section{Programme de simulation continue}
+
+\subsection{Breach and Attack Simulation (BAS)}
+
+Mise en place d'une plateforme BAS pour évaluer en continu l'efficacité des contrôles de sécurité.
+
+\subsubsection{Fonctionnalités}
+
+\begin{itemize}
+\item \textbf{Simulations automatisées} : Exécution régulière de scénarios d'attaque
+\item \textbf{Tests de contrôles} : Validation que les règles SIEM fonctionnent
+\item \textbf{Reporting} : Métriques sur la couverture de détection
+\item \textbf{Amélioration continue} : Identification des gaps et priorisation
+\end{itemize}
+
+\subsubsection{Bénéfices}
+
+\begin{itemize}
+\item Validation continue des capacités de détection
+\item Identification rapide des régressions
+\item Mesure objective de la posture de sécurité
+\item Conformité avec les frameworks (NIST, ISO 27001)
+\end{itemize}
+
+\subsection{Programme Purple Team}
+
+Formalisation d'un programme Purple Team combinant red team et blue team.
+
+\subsubsection{Cycles Purple Team}
+
+\begin{enumerate}
+\item \textbf{Planification} : Sélection de techniques ATT\&CK à tester
+\item \textbf{Exécution} : Red team exécute les techniques dans un environnement contrôlé
+\item \textbf{Observation} : Blue team tente de détecter et répondre
+\item \textbf{Débrief} : Analyse collaborative des résultats
+\item \textbf{Amélioration} : Implémentation de nouvelles détections
+\item \textbf{Validation} : Re-test pour confirmer l'amélioration
+\end{enumerate}
+
+\subsubsection{Objectifs}
+
+\begin{itemize}
+\item Améliorer la collaboration entre équipes offensives et défensives
+\item Identifier les blind spots de manière objective
+\item Former les analystes aux techniques réelles d'attaque
+\item Valider l'efficacité des nouveaux contrôles
+\end{itemize}
+
+\section{Expansion vers d'autres environnements}
+
+\subsection{Environnements Linux}
+
+Adapter la méthodologie à des environnements Linux :
+\begin{itemize}
+\item Collecte via auditd, syslog, osquery
+\item Techniques d'attaque spécifiques (privesc, persistence Linux)
+\item Hunting basé sur process behavior, network connections
+\end{itemize}
+
+\subsection{Environnements Cloud}
+
+Extension vers les infrastructures cloud :
+\begin{itemize}
+\item Azure AD attacks (password spray, token theft)
+\item AWS compromise (IAM abuse, S3 exfiltration)
+\item Kubernetes attacks (container escape, privilege escalation)
+\item Serverless attacks (function manipulation)
+\end{itemize}
+
+\subsection{Environnements OT/ICS}
+
+Application au domaine de la sécurité industrielle :
+\begin{itemize}
+\item Protocoles industriels (Modbus, DNP3, OPC UA)
+\item Attaques spécifiques aux SCADA
+\item Hunting dans les réseaux industriels
+\end{itemize}
+
+\section{Recherche et développement}
+
+\subsection{Amélioration de la méthode ACH}
+
+\begin{itemize}
+\item \textbf{Pondération des preuves} : Attribuer des poids différents selon la fiabilité
+\item \textbf{Calcul de probabilités} : Méthodes statistiques pour quantifier les probabilités
+\item \textbf{Visualisation} : Outils graphiques pour faciliter l'analyse ACH
+\item \textbf{Automatisation partielle} : Assistance par IA pour suggérer des hypothèses
+\end{itemize}
+
+\subsection{Contribution à la communauté}
+
+\begin{itemize}
+\item \textbf{Publication de règles Sigma} : Partage des détections développées
+\item \textbf{Contribution MITRE ATT\&CK} : Documentation de nouveaux TTPs observés
+\item \textbf{Open source tools} : Développement d'outils de hunting
+\item \textbf{Publications académiques} : Recherche sur les méthodologies de hunting
+\end{itemize}
+
+\section{Formation et certification}
+
+\subsection{Parcours de formation}
+
+Développement d'un programme de formation complet :
+\begin{itemize}
+\item Cursus « Junior Threat Hunter »
+\item Cursus « Senior Threat Hunter »
+\item Certification interne en méthode ACH
+\item Ateliers pratiques réguliers
+\end{itemize}
+
+\subsection{Certifications externes}
+
+Encourager l'obtention de certifications reconnues :
+\begin{itemize}
+\item GCFA (GIAC Certified Forensic Analyst)
+\item GCTI (GIAC Cyber Threat Intelligence)
+\item GCIH (GIAC Certified Incident Handler)
+\item OSCP (Offensive Security Certified Professional)
+\end{itemize}
+
+\section{Conclusion}
+
+Les perspectives d'évolution de ce projet sont nombreuses et variées. Elles ouvrent de multiples opportunités pour :
+
+\begin{itemize}
+\item \textbf{Approfondir} les techniques de détection et d'investigation
+\item \textbf{Automatiser} pour gagner en efficacité et en scalabilité
+\item \textbf{Élargir} le périmètre vers de nouveaux environnements et technologies
+\item \textbf{Innover} avec l'intelligence artificielle et le machine learning
+\item \textbf{Structurer} les pratiques via des programmes formels (Purple Team, BAS)
+\item \textbf{Former} les équipes aux techniques les plus avancées
+\end{itemize}
+
+L'ensemble de ces perspectives contribue à une détection plus avancée, plus rapide et plus intelligente des cybermenaces dans des environnements toujours plus complexes. La mise en œuvre progressive de ces évolutions permettra de maintenir et d'améliorer continuellement la posture de sécurité face à un paysage de menaces en constante évolution.

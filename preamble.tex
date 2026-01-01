@@ -1,0 +1,94 @@
+% ============================================
+% PREAMBLE - Configuration LaTeX
+% ============================================
+
+% Packages de base
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+
+% Géométrie de la page
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm]{geometry}
+
+% Interligne 1.5
+\usepackage{setspace}
+\onehalfspacing
+
+% Graphiques et figures
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% Tableaux
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+
+% Liens hypertextes
+\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue]{hyperref}
+
+% En-têtes et pieds de page
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+
+% Style pour les chapitres
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% Listings pour le code
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Configuration des listings
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+% Abréviations
+\usepackage{acronym}
+
+% Amélioration des tables des matières
+\usepackage{tocloft}
+
+% Bibliographie
+\usepackage[style=numeric, sorting=none]{biblatex}
+\addbibresource{bibliography/references.bib}
+
+% Commandes personnalisées
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+% Métadonnées du document
+\title{Threat Hunting : Détection d'un Brute Force Réussi suivi d'une Exfiltration de Données}
+\author{Mme LABIED Chayma, Mr GHRISSE Oussama, Mr Jaber Oussama}
+\date{Année universitaire : 2025/2026}

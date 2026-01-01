@@ -1,0 +1,39 @@
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+
+Le présent document retrace le travail réalisé dans le cadre de notre projet intitulé \textit{« Mise en place d'un processus de Threat Hunting sur un environnement Windows à travers la simulation d'une attaque réelle »}, mené au sein de DataProtect, entreprise reconnue pour son expertise en cybersécurité et en surveillance des infrastructures IT.
+
+L'objectif principal de ce projet est de simuler une attaque complète sur un serveur Windows, puis d'analyser et de détecter cette compromission en se basant exclusivement sur les logs collectés par un SIEM, reproduisant ainsi les conditions opérationnelles d'un centre de supervision de la sécurité (SOC).
+
+Pour atteindre cet objectif, nous avons mis en place un environnement composé d'un Windows Server (cible), d'une machine Kali Linux (attaquant) et d'un SIEM, configuré pour collecter des journaux critiques tels que les Windows Event Logs, Sysmon, logs PowerShell et données réseau/DNS.
+
+L'attaque simulée couvre plusieurs étapes clés : accès initial (par AS-REP Roasting ou exécution de commandes PowerShell), exécution et enchaînement de commandes malveillantes, mise en place de techniques de persistance, collecte de données sensibles et exfiltration vers la machine contrôlée par l'attaquant.
+
+Une démarche structurée de Threat Hunting a ensuite été menée pour formuler des hypothèses d'investigation, identifier les comportements suspects, corréler les événements et reconstituer la timeline complète de l'attaque, en reliant chaque action aux tactiques et techniques du Framework MITRE ATT\&CK.
+
+Ce projet a permis d'évaluer la visibilité offerte par la journalisation Windows, d'identifier les capacités et limites de détection, et de proposer des cas d'usage SIEM supplémentaires afin de renforcer la détection précoce, la corrélation et la réponse aux incidents de sécurité sur des environnements Windows.
+
+Ce travail s'inscrit pleinement dans les enjeux opérationnels d'un SOC, en mettant en pratique des techniques modernes de Threat Hunting et de défense proactive contre les cybermenaces.
+
+\textbf{Mots-clés :} Threat Hunting, DataProtect, SIEM, Windows Server, Sysmon, PowerShell, MITRE ATT\&CK, Journalisation, Exfiltration, Analyse des incidents, Sécurité informatique, SOC.
+
+\clearpage
+
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+This document presents the work carried out as part of our project entitled \textit{"Implementation of a Threat Hunting Process on a Windows Environment through Realistic Attack Simulation,"} conducted within DataProtect, a company recognized for its expertise in cybersecurity and IT infrastructure monitoring.
+
+The main objective of this project is to simulate a full attack on a Windows Server and to analyze and detect the compromise exclusively through SIEM-collected logs, replicating the operational conditions of a Security Operations Center (SOC).
+
+To achieve this goal, we deployed an environment consisting of a Windows Server (victim), a Kali Linux machine (attacker), and a SIEM configured to collect critical logs such as Windows Security Event Logs, Sysmon events, PowerShell logs, and Network/DNS data.
+
+The simulated attack covers several key phases: initial access (via AS-REP Roasting or malicious PowerShell execution), execution of attacker commands, implementation of persistence mechanisms, collection of sensitive data, and exfiltration to the attacker-controlled machine.
+
+A structured Threat Hunting methodology was then applied to develop investigation hypotheses, identify suspicious activities, correlate events, and reconstruct the complete attack timeline, mapping every action to the tactics and techniques of the MITRE ATT\&CK Framework.
+
+This project enabled us to assess the visibility provided by Windows logging, identify detection capabilities and limitations, and propose additional SIEM use cases to strengthen early detection, correlation, and incident response capabilities within Windows environments.
+
+Our work aligns with real SOC operational challenges, applying modern Threat Hunting practices and proactive defense techniques to better understand and detect advanced cyber threats.
+
+\textbf{Keywords:} Threat Hunting, DataProtect, SIEM, Windows Server, Sysmon, PowerShell, MITRE ATT\&CK, Logging, Data Exfiltration, Incident Analysis, Cybersecurity, SOC.

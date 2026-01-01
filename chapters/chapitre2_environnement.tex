@@ -1,0 +1,157 @@
+\chapter{Environnement de travail, outils et technologies utilisées}
+
+\section{Introduction}
+
+Ce chapitre présente l'environnement technique mis en place pour la réalisation de notre projet. Il détaille les machines virtuelles utilisées, les outils de virtualisation, ainsi que les logiciels et framework déployés pour assurer la collecte, l'analyse et la visualisation des journaux système.
+
+L'objectif est de montrer comment ces composants interagissent pour former un environnement cohérent, propice à la détection d'anomalies de sécurité dans un système. Nous décrivons également les technologies de journalisation et les référentiels de cybersécurité utilisés pour évaluer et améliorer la visibilité des activités système.
+
+\section{Machines virtuelles (VM)}
+
+Les machines virtuelles permettent de créer un environnement de test isolé, sécurisé et entièrement contrôlé. Dans ce projet, les VM ont été utilisées pour simuler une attaque réelle sans impacter un système physique. Elles facilitent également la reproduction des scénarios d'attaque, l'analyse des logs et la reconstruction de la timeline.
+
+\subsection{Machines utilisées}
+
+\begin{itemize}
+\item \textbf{Windows Server :} machine victime de l'attaque AS-REP Roasting et de l'exfiltration
+\item \textbf{Kali Linux :} machine attaquante utilisée pour lancer les attaques et générer l'activité malveillante
+\end{itemize}
+
+\section{Windows Server (VM)}
+
+Windows Server constitue la machine cible dans notre scénario. Il s'agit d'un système très répandu dans les environnements professionnels, souvent exposé à des attaques RDP et à des tentatives d'accès non autorisées.
+
+Windows Server 2019 a été configuré comme contrôleur de domaine Active Directory, permettant de simuler un environnement d'entreprise réaliste. La machine collecte et transmet les logs critiques suivants :
+\begin{itemize}
+\item Windows Security Event Logs (authentification, création de processus)
+\item Sysmon (monitoring système avancé)
+\item PowerShell Script Block Logging (Event ID 4104)
+\item Logs de tâches planifiées
+\end{itemize}
+
+\section{Kali Linux (VM)}
+
+Kali Linux est une distribution dédiée au pentesting et à l'audit de sécurité. Elle intègre de nombreux outils offensifs permettant de simuler différents types d'attaques.
+
+Dans notre projet, Kali Linux a été utilisée pour :
+\begin{itemize}
+\item Effectuer l'AS-REP Roasting avec Impacket GetNPUsers
+\item Craquer les mots de passe hors ligne avec John The Ripper
+\item Se connecter via RDP avec les credentials compromis
+\item Exécuter des commandes PowerShell encodées
+\item Créer des tâches planifiées malveillantes
+\item Exfiltrer des données via BITS
+\end{itemize}
+
+\section{Outils de collecte et d'analyse}
+
+\subsection{Elastic Security (SIEM)}
+
+Elastic Security est une plateforme SIEM moderne déployée dans le cloud pour ce projet. Elle collecte, corrèle et analyse les événements de sécurité provenant du Windows Server.
+
+\textbf{Configuration :}
+\begin{itemize}
+\item Déploiement Cloud Elastic
+\item Installation de l'agent Elastic sur Windows Server
+\item Intégrations activées : Windows Event Logs, Sysmon, PowerShell
+\item Collecte centralisée des logs
+\item Tableaux de bord de visualisation
+\item Règles de détection personnalisées
+\end{itemize}
+
+\subsection{Sysmon}
+
+Sysmon est un composant de la suite Sysinternals permettant d'améliorer la visibilité sur les comportements système. Il offre une journalisation avancée, notamment sur :
+\begin{itemize}
+\item La création de processus (Event ID 1)
+\item Les connexions réseau (Event ID 3)
+\item Les modifications de fichiers
+\item Les chargements de DLL
+\item Les hash des exécutables
+\item La création de tâches planifiées
+\end{itemize}
+
+Sysmon a été configuré avec une configuration personnalisée pour maximiser la visibilité sur les activités potentiellement malveillantes, tout en limitant le bruit généré par les opérations légitimes.
+
+\subsection{PowerShell Script Block Logging}
+
+Le Script Block Logging de PowerShell (Event ID 4104) enregistre le contenu des commandes PowerShell exécutées, même si elles sont encodées ou obfusquées. Cette fonctionnalité est essentielle pour détecter :
+\begin{itemize}
+\item Les commandes PowerShell encodées en Base64
+\item Les scripts obfusqués
+\item Les techniques de reconnaissance
+\item Les commandes de collecte de données
+\end{itemize}
+
+\section{Outils d'attaque}
+
+\subsection{Impacket GetNPUsers}
+
+Impacket est une collection de classes Python pour travailler avec les protocoles réseau. L'outil GetNPUsers permet d'effectuer l'AS-REP Roasting, une technique d'attaque Kerberos qui exploite les comptes n'ayant pas besoin de pré-authentification.
+
+\textbf{Fonctionnement :}
+\begin{lstlisting}[language=bash, caption={Commande AS-REP Roasting avec Impacket}]
+impacket-GetNPUsers domain.local/ -usersfile users.txt \
+  -format hashcat -dc-ip <DC-IP>
+\end{lstlisting}
+
+\subsection{John The Ripper}
+
+John The Ripper est un outil de craquage de mots de passe hors ligne. Il est utilisé pour craquer les hash Kerberos obtenus lors de l'AS-REP Roasting.
+
+\textbf{Utilisation :}
+\begin{lstlisting}[language=bash, caption={Craquage de hash avec John The Ripper}]
+john --wordlist=passwords.txt --format=krb5asrep hash.txt
+\end{lstlisting}
+
+\subsection{BITSAdmin}
+
+BITSAdmin est un outil légitime de Windows utilisé pour le Background Intelligent Transfer Service. Les attaquants l'utilisent fréquemment pour exfiltrer des données de manière discrète, car il génère moins d'alertes que les transferts réseau traditionnels.
+
+\section{Framework MITRE ATT\&CK}
+
+Le framework MITRE ATT\&CK est une base de connaissances des techniques d'attaque utilisées par les cybercriminels. Il est largement adopté dans le monde de la cybersécurité pour cartographier les événements à des comportements malveillants connus.
+
+Dans ce projet, MITRE ATT\&CK a été utilisé comme référentiel pour :
+\begin{itemize}
+\item Analyser les journaux collectés
+\item Associer chaque action à une technique d'attaque précise
+\item Évaluer la couverture de détection
+\item Identifier les lacunes dans la supervision
+\end{itemize}
+
+\textbf{Techniques mappées dans notre scénario :}
+\begin{itemize}
+\item \textbf{T1558.004} - AS-REP Roasting (Credential Access)
+\item \textbf{T1059.001} - PowerShell (Execution)
+\item \textbf{T1053.005} - Scheduled Task/Job (Persistence)
+\item \textbf{T1027} - Obfuscated Files or Information (Defense Evasion)
+\item \textbf{T1197} - BITS Jobs (Defense Evasion, Persistence, Exfiltration)
+\item \textbf{T1083} - File and Directory Discovery (Discovery)
+\item \textbf{T1087} - Account Discovery (Discovery)
+\end{itemize}
+
+\section{Architecture globale}
+
+L'architecture mise en place pour ce projet se compose de trois éléments principaux :
+
+\begin{enumerate}
+\item \textbf{Machine attaquante (Kali Linux)} : Simule les actions d'un attaquant externe
+\item \textbf{Machine victime (Windows Server)} : Collecte les logs et transmet au SIEM
+\item \textbf{SIEM (Elastic Security)} : Agrège, corrèle et analyse les événements
+\end{enumerate}
+
+Le flux de données suit le schéma suivant :
+\begin{enumerate}
+\item L'attaquant exécute des actions malveillantes depuis Kali Linux
+\item Windows Server génère des logs (Security, Sysmon, PowerShell)
+\item L'agent Elastic collecte ces logs et les transmet au SIEM
+\item Le SIEM indexe et corrèle les événements
+\item L'analyste utilise des requêtes pour reconstituer la timeline
+\end{enumerate}
+
+\section{Conclusion}
+
+L'environnement de travail mis en place repose sur une architecture flexible et réaliste, permettant de simuler un serveur Windows supervisé dans un contexte de SOC. L'utilisation de machines virtuelles, combinée à des outils comme Elastic Security, Sysmon et PowerShell Logging, a permis de collecter efficacement les événements système et de les analyser en profondeur.
+
+Le recours au framework MITRE ATT\&CK a renforcé cette approche en fournissant une grille de lecture normalisée des comportements malveillants. Ces fondations techniques constituent un socle solide pour les chapitres suivants, orientés vers la simulation de l'attaque et l'investigation avec la méthode ACH.

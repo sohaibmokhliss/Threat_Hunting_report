@@ -1,0 +1,29 @@
+\chapter*{Introduction générale}
+\addcontentsline{toc}{chapter}{Introduction générale}
+
+De nos jours, les cyberattaques deviennent de plus en plus sophistiquées et ciblent fréquemment les infrastructures critiques des organisations. Dans ce contexte, la détection proactive des menaces et la capacité à analyser les comportements malveillants constituent des enjeux stratégiques majeurs pour renforcer la sécurité des systèmes d'information. Les entreprises doivent non seulement protéger leurs environnements, mais également mettre en place des mécanismes avancés de surveillance afin d'identifier rapidement toute activité suspecte.
+
+C'est dans ce cadre que s'inscrit le présent projet, réalisé au sein de DataProtect, acteur de référence dans la cybersécurité au Maroc. L'entreprise accompagne les organisations dans l'amélioration de leur posture de sécurité, notamment à travers le déploiement de plateformes de journalisation, d'outils SIEM et de mécanismes de détection avancée. Le Threat Hunting, discipline consistant à rechercher activement des signes de compromission au sein des systèmes d'information, occupe désormais une place centrale dans les stratégies modernes de défense.
+
+Notre projet s'inscrit pleinement dans cette dynamique. Il porte sur la mise en place d'un processus complet de Threat Hunting basé sur la simulation d'une attaque réelle contre un environnement Windows. L'objectif principal est double :
+\begin{itemize}
+\item D'une part, simuler une chaîne d'attaque complète incluant accès initial, exécution de commandes, persistance, collecte et exfiltration de données ;
+\item D'autre part, analyser et reconstruire l'ensemble de cette attaque exclusivement à travers les logs collectés par un SIEM, en s'appuyant sur des sources critiques telles que Windows Event Logs, Sysmon, PowerShell Logs et données réseau/DNS.
+\end{itemize}
+
+Le projet vise également à mapper les différentes étapes de l'attaque au Framework MITRE ATT\&CK, permettant ainsi de mesurer la couverture de détection et d'identifier d'éventuelles lacunes. Grâce à cette démarche, il devient possible de proposer des recommandations et de nouveaux cas d'usage SIEM visant à renforcer les capacités de surveillance et de réponse aux incidents.
+
+Le présent rapport retrace l'ensemble des travaux menés dans le cadre de ce projet. Il s'articule autour de huit chapitres :
+
+\begin{enumerate}
+\item \textbf{Contexte général du projet} : présentation de l'organisme d'accueil et du projet
+\item \textbf{Environnement de travail} : outils et technologies utilisés
+\item \textbf{Threat Hunting en cybersécurité} : fondements théoriques et méthodologie ACH
+\item \textbf{Simulation de l'attaque} : reproduction détaillée de la chaîne d'attaque
+\item \textbf{Investigation ACH} : analyse approfondie avec la méthode d'analyse des hypothèses concurrentes
+\item \textbf{Résultats et recommandations} : synthèse des conclusions et propositions d'amélioration
+\item \textbf{Perspectives futures} : pistes d'évolution et d'amélioration
+\item \textbf{Conclusion générale} : bilan du projet et apports
+\end{enumerate}
+
+Ce travail vise à démontrer qu'une démarche structurée de Threat Hunting, appuyée sur une analyse rigoureuse des logs et une méthodologie éprouvée, permet de détecter et de reconstituer des attaques sophistiquées, même lorsque celles-ci utilisent des techniques d'évasion et des outils légitimes du système.

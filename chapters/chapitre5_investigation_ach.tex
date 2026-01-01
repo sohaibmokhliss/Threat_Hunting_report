@@ -1,0 +1,334 @@
+\chapter{Investigation ACH : Analyse de l'incident}
+
+\section{Introduction}
+
+Ce chapitre constitue le cœur analytique du projet. Il présente l'investigation complète de l'activité suspecte détectée sur le serveur Windows, en appliquant rigoureusement la méthode ACH (Analysis of Competing Hypotheses).
+
+L'investigation suit la méthodologie structurée présentée au chapitre 3, permettant d'évaluer objectivement plusieurs scénarios possibles et d'identifier l'explication la plus probable des événements observés.
+
+\section{Contexte de l'investigation}
+
+\subsection{Alerte initiale}
+
+Le client a contacté l'équipe de sécurité après avoir remarqué une activité inhabituelle sur un serveur critique. Étant donné que le serveur héberge des données sensibles, le client s'inquiétait de la possibilité d'un accès non autorisé et a demandé une investigation pour confirmer si le système avait été compromis.
+
+\textbf{Heure du signalement :} 30/12/2025 14:30
+
+\subsection{Périmètre de l'investigation}
+
+L'investigation a été limitée au contrôleur de domaine et s'est concentrée sur les activités d'authentification et d'exécution pendant la période où le comportement inhabituel a été signalé.
+
+\subsection{Sources de données disponibles}
+
+\begin{itemize}
+\item Windows Security Event Logs (authentification, création de processus)
+\item Sysmon (monitoring système détaillé)
+\item PowerShell Script Block Logging (Event ID 4104)
+\item Logs de tâches planifiées
+\item Logs réseau et DNS
+\end{itemize}
+
+\section{Phase 1 : Formulation des hypothèses}
+
+Conformément à la méthodologie ACH, nous commençons par identifier toutes les explications plausibles de l'activité observée. Il est crucial de ne pas se limiter à une seule hypothèse, mais d'explorer tous les scénarios réalistes.
+
+\subsection{H1 - Activité administrative légitime}
+
+\textbf{Description :} L'activité observée pourrait être celle d'un administrateur système effectuant une maintenance planifiée ou non planifiée, des diagnostics, ou une intervention technique.
+
+\textbf{Justification :} Les administrateurs utilisent régulièrement PowerShell et des outils système pour gérer les serveurs. Les connexions hors horaires normaux peuvent être légitimes en cas d'urgence.
+
+\subsection{H2 - Activité automatisée ou mauvaise configuration}
+
+\textbf{Description :} L'activité pourrait être générée par un processus automatique, une tâche planifiée légitime, un service système, ou résulter d'une mauvaise configuration.
+
+\textbf{Justification :} Les systèmes Windows exécutent de nombreuses tâches automatisées. Une configuration erronée pourrait générer un comportement inhabituel.
+
+\subsection{H3 - Accès non autorisé utilisant des identifiants valides}
+
+\textbf{Description :} Un attaquant externe ou interne a pu utiliser des identifiants compromis (via phishing, craquage, vol) pour effectuer une connexion légitime, puis compromettre le système.
+
+\textbf{Justification :} Les attaques par credentials valides sont courantes et difficiles à détecter car elles utilisent des comptes légitimes.
+
+\subsection{H4 - Malware ou exploitation automatique}
+
+\textbf{Description :} Une infection malware ou un exploit automatique pourrait avoir déclenché l'activité sans interaction humaine directe.
+
+\textbf{Justification :} Les malwares peuvent automatiser certaines actions et utiliser des outils système légitimes.
+
+\section{Phase 2 : Collecte et documentation des preuves}
+
+Nous rassemblons systématiquement toutes les preuves disponibles dans les logs, en documentant chaque observation.
+
+\subsection{Liste complète des preuves}
+
+\begin{description}
+\item[P1 - Logons depuis une source inhabituelle] Les connexions n'ont pas été effectuées depuis un poste administrateur connu ou une IP de confiance.
+
+\item[P2 - PowerShell encodé / obfusqué] Détection de commandes PowerShell encodées en Base64, technique non standard pour des opérations administratives normales.
+
+\item[P3 - Activité ne correspondant pas aux procédures administratives] Les actions observées ne suivent pas les procédures documentées et les fenêtres de maintenance planifiées.
+
+\item[P4 - PowerShell interactif détecté] Les commandes PowerShell ont été exécutées de manière interactive (pas via script ou automation).
+
+\item[P5 - Commandes reflétant une reconnaissance manuelle] Les commandes exécutées indiquent une recherche exploratoire de fichiers sensibles et d'informations système.
+
+\item[P6 - Aucun scheduled task légitime associé à l'activité] Les tâches planifiées créées ne correspondent à aucune configuration documentée.
+
+\item[P7 - Kerberos PreAuthType = 0 (AS-REP Roasting possible)] Événements Kerberos indiquant des demandes de tickets sans pré-authentification, technique d'attaque connue.
+
+\item[P8 - Authentifications interactives réussies sur le Domain Controller] Logons de type 10 (Remote Interactive) détectés sur le DC.
+
+\item[P9 - PowerShell encodé immédiatement après l'authentification] Exécution de commandes suspectes quelques minutes après le logon réussi.
+
+\item[P10 - Reconnaissance : énumération des privilèges, recherche de backups] Les commandes exécutées visaient à identifier les privilèges de l'utilisateur et localiser des fichiers sensibles (.kdbx, .bak).
+
+\item[P11 - Création d'une scheduled task pour persistance] Une tâche planifiée a été créée dans un emplacement imitant les tâches Microsoft légitimes.
+
+\item[P12 - Exfiltration de données par petites portions] Transferts réseau vers une adresse externe effectués en petites portions répétées.
+
+\item[P13 - Aucun binaire malveillant détecté] Aucun exécutable inconnu ou malveillant n'a été trouvé sur le système.
+
+\item[P14 - Activité utilisant uniquement des outils natifs (Living-off-the-land)] Toutes les actions ont été réalisées avec des outils Windows légitimes : PowerShell, bitsadmin, schtasks.
+
+\item[P15 - Comportement "hands-on-keyboard" (= humain, pas malware)] Le pattern d'activité suggère une interaction humaine directe plutôt qu'une automation malware.
+\end{description}
+
+\subsection{Requêtes SIEM utilisées}
+
+\subsubsection{Détection AS-REP Roasting}
+
+\begin{lstlisting}[language=SQL, caption={Requête pour Event ID 4768 avec PreAuthType = 0}]
+event.code: 4768 AND 
+winlog.event_data.PreAuthType: 0
+\end{lstlisting}
+
+\subsubsection{Détection PowerShell encodé}
+
+\begin{lstlisting}[language=SQL, caption={Requête pour PowerShell encodé}]
+event.code: 4104 AND 
+(message: "*-Enc*" OR message: "*-EncodedCommand*" OR 
+ message: "*JAB*" OR message: "*SUY*")
+\end{lstlisting}
+
+\subsubsection{Détection création de tâches planifiées}
+
+\begin{lstlisting}[language=SQL, caption={Requête pour tâches planifiées suspectes}]
+event.code: 4698 AND 
+process.command_line: "*powershell*"
+\end{lstlisting}
+
+\subsubsection{Détection exfiltration BITS}
+
+\begin{lstlisting}[language=SQL, caption={Requête pour transferts BITS suspects}]
+process.name: "bitsadmin.exe" AND 
+process.command_line: "*upload*"
+\end{lstlisting}
+
+\section{Phase 3 : Matrice ACH - Confrontation preuves/hypothèses}
+
+Nous construisons maintenant la matrice ACH complète, confrontant systématiquement chaque preuve à chaque hypothèse.
+
+\textbf{Légende :}
+\begin{itemize}
+\item ✔️ = La preuve est cohérente avec l'hypothèse
+\item ❌ = La preuve contredit l'hypothèse
+\item ➖ = La preuve est neutre (n'affecte pas l'hypothèse)
+\end{itemize}
+
+\begin{landscape}
+\begin{table}[H]
+\centering
+\tiny
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Preuve / Hypothèse} & \textbf{H1 Admin légitime} & \textbf{H2 Automatique / misconfig} & \textbf{H3 Attaquant externe} & \textbf{H4 Malware / exploit} \\ \midrule
+P1 - Logons source inconnue & ❌ & ❌ & ✔️ & ➖ \\
+P2 - PowerShell encodé & ❌ & ❌ & ✔️ & ➖ \\
+P3 - Non conforme procédures admin & ❌ & ➖ & ✔️ & ➖ \\
+P4 - PowerShell interactif & ❌ & ❌ & ✔️ & ❌ \\
+P5 - Reconnaissance manuelle & ❌ & ❌ & ✔️ & ❌ \\
+P6 - Pas de tâche planifiée légitime & ✔️ & ❌ & ✔️ & ➖ \\
+P7 - PreAuthType 0 (AS-REP Roasting) & ❌ & ➖ & ✔️ & ➖ \\
+P8 - Logon interactif sur DC & ❌ & ❌ & ✔️ & ❌ \\
+P9 - PowerShell encodé après logon & ❌ & ❌ & ✔️ & ➖ \\
+P10 - Reconnaissance AD & ❌ & ❌ & ✔️ & ❌ \\
+P11 - Création tâche malveillante & ❌ & ❌ & ✔️ & ➖ \\
+P12 - Exfiltration données & ❌ & ➖ & ✔️ & ➖ \\
+P13 - Aucun malware trouvé & ✔️ & ✔️ & ✔️ & ❌ \\
+P14 - Living-off-the-land & ✔️ & ➖ & ✔️ & ❌ \\
+P15 - Interaction humaine (hands-on-keyboard) & ✔️ & ❌ & ✔️ & ❌ \\ \midrule
+\textbf{Score de cohérence} & \textbf{3/15} & \textbf{2/15} & \textbf{15/15} & \textbf{1/15} \\ \bottomrule
+\end{tabular}
+\caption{Matrice ACH complète - Confrontation des preuves et hypothèses}
+\label{tab:ach-complete}
+\end{table}
+\end{landscape}
+
+\section{Phase 4 : Analyse et élimination des hypothèses}
+
+\subsection{Analyse de H1 - Activité administrative légitime}
+
+\textbf{Preuves contradictoires :}
+\begin{itemize}
+\item P1 : Source de connexion inconnue
+\item P2 : PowerShell encodé (non standard pour admin)
+\item P3 : Non-conformité aux procédures
+\item P4, P5 : Commandes de reconnaissance inhabituelle
+\item P7 : AS-REP Roasting détecté
+\item P8-P12 : Pattern complet d'attaque
+\end{itemize}
+
+\textbf{Conclusion :} ❌ \textbf{Hypothèse rejetée}
+
+Un administrateur légitime n'aurait pas besoin d'encoder ses commandes, n'utiliserait pas l'AS-REP Roasting, et suivrait les procédures établies. Le score de cohérence (3/15) est le plus faible après H4.
+
+\subsection{Analyse de H2 - Activité automatisée ou mauvaise configuration}
+
+\textbf{Preuves contradictoires :}
+\begin{itemize}
+\item P4 : PowerShell interactif (pas automatisé)
+\item P5 : Reconnaissance manuelle
+\item P15 : Comportement "hands-on-keyboard"
+\end{itemize}
+
+\textbf{Conclusion :} ❌ \textbf{Hypothèse rejetée}
+
+L'activité montre clairement une interaction humaine directe. Les commandes sont exécutées de manière exploratoire et adaptative, incompatible avec un processus automatisé. Score : 2/15.
+
+\subsection{Analyse de H3 - Accès non autorisé avec identifiants valides}
+
+\textbf{Preuves supportant l'hypothèse :}
+\begin{itemize}
+\item P1-P15 : Toutes les preuves sont cohérentes avec cette hypothèse
+\item La séquence complète suit le modèle d'une attaque APT :
+  \begin{enumerate}
+  \item Initial Access via AS-REP Roasting (P7)
+  \item Credential Access hors-ligne
+  \item Execution via RDP (P8)
+  \item Discovery via PowerShell (P5, P10)
+  \item Persistence via scheduled task (P11)
+  \item Exfiltration via BITS (P12)
+  \end{enumerate}
+\end{itemize}
+
+\textbf{Conclusion :} ✔️ \textbf{Hypothèse la plus probable}
+
+Score de cohérence parfait : 15/15. Toutes les preuves convergent vers un accès non autorisé sophistiqué.
+
+\subsection{Analyse de H4 - Malware ou exploitation automatique}
+
+\textbf{Preuves contradictoires :}
+\begin{itemize}
+\item P4, P5 : Interaction humaine détectée
+\item P8 : Logon interactif
+\item P13 : Aucun binaire malveillant
+\item P14 : Utilisation exclusive d'outils légitimes
+\item P15 : Pattern "hands-on-keyboard"
+\end{itemize}
+
+\textbf{Conclusion :} ❌ \textbf{Hypothèse rejetée}
+
+Bien qu'un malware sophistiqué puisse utiliser des techniques LotL, l'absence totale de binaire malveillant combinée aux patterns d'interaction humaine réfute cette hypothèse. Score : 1/15.
+
+\section{Phase 5 : Conclusion de l'investigation}
+
+\subsection{Hypothèse retenue}
+
+\textbf{H3 - Accès non autorisé utilisant des identifiants valides compromis}
+
+Cette hypothèse est soutenue par l'intégralité des preuves collectées (15/15). L'investigation révèle une chaîne d'attaque complète et cohérente :
+
+\begin{enumerate}
+\item \textbf{Initial Access :} AS-REP Roasting pour compromettre le compte \texttt{jaber}
+\item \textbf{Credential Access :} Craquage du hash hors-ligne
+\item \textbf{Execution :} Connexion RDP avec credentials valides
+\item \textbf{Discovery :} Reconnaissance via PowerShell encodé
+\item \textbf{Persistence :} Création de tâche planifiée malveillante
+\item \textbf{Exfiltration :} Transfert de données via BITS
+\end{enumerate}
+
+\subsection{Niveau de confiance}
+
+\textbf{Confiance : HAUTE (95\%)}
+
+La convergence de toutes les preuves, la cohérence de la timeline, et l'alignement parfait avec les TTPs documentés dans MITRE ATT\&CK fournissent un niveau de confiance très élevé.
+
+\subsection{Déclaration formelle d'incident}
+
+\begin{center}
+\fbox{\begin{minipage}{0.9\textwidth}
+\textbf{INCIDENT CONFIRMÉ}
+
+Le serveur Windows a été compromis par un acteur malveillant externe utilisant des techniques sophistiquées d'attaque. L'incident doit être traité selon la procédure de réponse aux incidents de niveau CRITIQUE.
+
+\textbf{Classification :} Compromission avérée avec exfiltration de données\\
+\textbf{Impact :} ÉLEVÉ\\
+\textbf{Urgence :} IMMÉDIATE\\
+\textbf{Actions requises :} Isolation, éradication, récupération
+\end{minipage}}
+\end{center}
+
+\subsection{Mapping MITRE ATT\&CK complet}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Tactique} & \textbf{Technique} & \textbf{ID} \\ \midrule
+Credential Access & AS-REP Roasting & T1558.004 \\
+Initial Access & Valid Accounts & T1078 \\
+Execution & PowerShell & T1059.001 \\
+Defense Evasion & Obfuscated Files or Information & T1027 \\
+Discovery & File and Directory Discovery & T1083 \\
+Discovery & Account Discovery & T1087 \\
+Persistence & Scheduled Task/Job & T1053.005 \\
+Defense Evasion & BITS Jobs & T1197 \\
+Exfiltration & Exfiltration Over Alternative Protocol & T1048 \\ \bottomrule
+\end{tabular}
+\caption{Mapping complet MITRE ATT\&CK de l'attaque}
+\label{tab:mitre-mapping}
+\end{table}
+
+\section{Recommandations immédiates}
+
+\subsection{Containment (Confinement)}
+
+\begin{itemize}
+\item Désactiver immédiatement le compte \texttt{jaber}
+\item Révoquer tous les tickets Kerberos actifs
+\item Bloquer les connexions RDP externes
+\item Isoler le serveur du réseau si nécessaire
+\end{itemize}
+
+\subsection{Eradication (Éradication)}
+
+\begin{itemize}
+\item Supprimer la tâche planifiée malveillante "CertValidation"
+\item Supprimer le script \texttt{exfil.ps1}
+\item Réinitialiser les mots de passe de tous les comptes sensibles
+\item Patcher la configuration AD pour exiger la pré-authentification Kerberos
+\end{itemize}
+
+\subsection{Recovery (Récupération)}
+
+\begin{itemize}
+\item Restaurer les configurations système légitimes
+\item Vérifier l'intégrité des fichiers système
+\item Auditer tous les comptes et permissions
+\item Réactiver les services après validation
+\end{itemize}
+
+\section{Conclusion}
+
+Ce chapitre a démontré l'efficacité de la méthode ACH pour l'investigation d'incidents de sécurité. En confrontant systématiquement quatre hypothèses plausibles à quinze preuves documentées, nous avons pu :
+
+\begin{itemize}
+\item Éliminer objectivement les scénarios non cohérents
+\item Identifier avec un haut niveau de confiance la nature de l'incident
+\item Documenter rigoureusement le processus de raisonnement
+\item Fournir une conclusion exploitable pour la réponse à incident
+\end{itemize}
+
+L'approche structurée de l'ACH a permis d'éviter les biais cognitifs et de construire un cas solide basé sur les preuves, démontrant qu'il s'agit bien d'une compromission réelle et sophistiquée du système.
